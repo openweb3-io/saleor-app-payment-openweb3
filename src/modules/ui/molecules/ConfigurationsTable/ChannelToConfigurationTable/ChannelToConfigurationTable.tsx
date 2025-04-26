@@ -3,7 +3,7 @@ import classNames from "classnames";
 import { useAppBridge } from "@saleor/app-sdk/app-bridge";
 import * as tableStyles from "./channelToConfigurationTable.css";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@/modules/ui/atoms/Table/Table";
-import { ChipStripeOrange, ChipNeutral, ChipSuccess } from "@/modules/ui/atoms/Chip/Chip";
+import { ChipOpenweb3Orange, ChipNeutral, ChipSuccess } from "@/modules/ui/atoms/Chip/Chip";
 import { trpcClient } from "@/modules/trpc/trpc-client";
 import { type Channel } from "@/types";
 import { getErrorHandler } from "@/modules/trpc/utils";
@@ -12,7 +12,7 @@ import {
   type ChannelMapping,
 } from "@/modules/payment-app-configuration/app-config";
 import { type PaymentAppConfigEntry } from "@/modules/payment-app-configuration/config-entry";
-import { getEnvironmentFromKey } from "@/modules/stripe/stripe-api";
+import { getEnvironmentFromKey } from "@/modules/openweb3/openweb3-api";
 
 const ChannelToConfigurationTableRow = ({
   channel,
@@ -98,10 +98,10 @@ const ChannelToConfigurationTableRow = ({
       <Td className={classNames(tableStyles.td, tableStyles.statusColumnTd)}>
         {!selectedConfiguration ? (
           <ChipNeutral>Disabled</ChipNeutral>
-        ) : getEnvironmentFromKey(selectedConfiguration.publishableKey) === "live" ? (
-          <ChipSuccess>LIVE</ChipSuccess>
+        ) : getEnvironmentFromKey(selectedConfiguration.publishableKey) === "production" ? (
+          <ChipSuccess>PRODUCTION</ChipSuccess>
         ) : (
-          <ChipStripeOrange>TESTING</ChipStripeOrange>
+          <ChipOpenweb3Orange>DEVELOPMENT</ChipOpenweb3Orange>
         )}
       </Td>
     </Tr>

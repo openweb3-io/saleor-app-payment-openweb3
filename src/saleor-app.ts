@@ -12,10 +12,6 @@ import { isTest } from "./lib/isEnv";
  * [APL documentation](https://github.com/saleor/saleor-app-sdk/blob/main/docs/apl.md)
  */
 const getApl = async () => {
-  if (isTest()) {
-    const { TestAPL } = await import("./__tests__/testAPL");
-    return new TestAPL();
-  }
   /* c8 ignore start */
   switch (env.APL) {
     case "upstash":

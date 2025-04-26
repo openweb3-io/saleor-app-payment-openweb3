@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "saleor-app-payment-stripe",
-  "description": "Saleor App Payment Stripe is a payment integration app that allows merchants using the Saleor e-commerce platform to accept online payments from customers using Stripe as their payment processor.",
+  "name": "saleor-app-payment-openweb3",
+  "description": "Saleor App Payment Openweb3 is a payment integration app that allows merchants using the Saleor e-commerce platform to accept online payments from customers using Openweb3 as their payment processor.",
   "version": "0.4.0",
   "license": "(BSD-3-Clause AND CC-BY-4.0)",
   "private": true,
-  "repository": "github:saleor/saleor-app-payment-stripe",
-  "homepage": "https://github.com/saleor/saleor-app-payment-stripe",
+  "repository": "github:saleor/saleor-app-payment-openweb3",
+  "homepage": "https://github.com/saleor/saleor-app-payment-openweb3",
   "bugs": {
-    "url": "https://github.com/saleor/saleor-app-payment-stripe/issues",
+    "url": "https://github.com/saleor/saleor-app-payment-openweb3/issues",
     "email": "hello@saleor.io"
   },
   "type": "module",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@hookform/resolvers": "3.3.2",
     "@next/env": "14.0.4",
+    "@openweb3-io/wallet-pay": "0.2.6",
     "@radix-ui/react-alert-dialog": "1.0.5",
     "@saleor/app-sdk": "0.47.2",
     "@saleor/macaw-ui": "0.8.0-pre.123",
@@ -74,8 +75,6 @@
     "react-dom": "18.2.0",
     "react-hook-form": "7.49.1",
     "semver": "7.5.4",
-    "stripe": "14.8.0",
-    "stripe-event-types": "3.1.0",
     "tsx": "4.6.2",
     "url-join": "5.0.0",
     "urql": "3.0.4",
@@ -117,7 +116,6 @@
     "@typescript-eslint/parser": "6.14.0",
     "@vanilla-extract/vite-plugin": "3.9.3",
     "@vitest/coverage-v8": "0.34.2",
-    "vite": "5.4.12",
     "dependency-cruiser": "15.5.0",
     "eslint": "8.55.0",
     "eslint-config-next": "14.0.4",
@@ -134,6 +132,7 @@
     "setup-polly-jest": "0.11.0",
     "ts-node": "10.9.2",
     "typescript": "5.3.3",
+    "vite": "5.4.12",
     "vite-tsconfig-paths": "4.2.2",
     "vitest": "0.34.2"
   },

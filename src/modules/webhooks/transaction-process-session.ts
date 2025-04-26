@@ -1,19 +1,19 @@
-import { obfuscateConfig, obfuscateValue } from "../app-configuration/utils";
+import { obfuscateConfig } from "../app-configuration/utils";
 import { paymentAppFullyConfiguredEntrySchema } from "../payment-app-configuration/config-entry";
 import { getConfigurationForChannel } from "../payment-app-configuration/payment-app-configuration";
 import { getWebhookPaymentAppConfigurator } from "../payment-app-configuration/payment-app-configuration-factory";
 import {
-  transactionSessionProcessEventToStripeUpdate,
+  transactionSessionProcessEventToOpenweb3Update,
   getEnvironmentFromKey,
-  stripePaymentIntentToTransactionResult,
-  getStripeExternalUrlForIntentId,
-  updateStripePaymentIntent,
-} from "../stripe/stripe-api";
-import { getSaleorAmountFromStripeAmount } from "../stripe/currencies";
+  openweb3PaymentIntentToTransactionResult,
+  getOpenweb3ExternalUrlForIntentId,
+  updateOpenweb3PaymentIntent,
+} from "../openweb3/openweb3-api";
 import { type TransactionProcessSessionEventFragment } from "generated/graphql";
 import { type TransactionProcessSessionResponse } from "@/schemas/TransactionProcessSession/TransactionProcessSessionResponse.mjs";
 import { createLogger } from "@/lib/logger";
 import { invariant } from "@/lib/invariant";
+import { type JSONObject } from "@/types";
 
 export const TransactionProcessSessionWebhookHandler = async (
   event: TransactionProcessSessionEventFragment,
@@ -41,59 +41,47 @@ export const TransactionProcessSessionWebhookHandler = async (
   const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
   const appConfig = await configurator.getConfig();
 
-  const stripeConfig = paymentAppFullyConfiguredEntrySchema.parse(
+  const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
     getConfigurationForChannel(appConfig, event.sourceObject.channel.id),
   );
 
   logger.info({}, "Processing Transaction Initialize request");
 
-  const paymentIntentUpdateParams = transactionSessionProcessEventToStripeUpdate(event);
+  const paymentIntentUpdateParams = transactionSessionProcessEventToOpenweb3Update(event);
+
   logger.debug({
     paymentIntentUpdateParams: obfuscateConfig(paymentIntentUpdateParams),
-    environment: getEnvironmentFromKey(stripeConfig.publishableKey),
+    environment: getEnvironmentFromKey(openweb3Config.publishableKey),
   });
 
-  const stripePaymentIntent = await updateStripePaymentIntent({
+  const openweb3PaymentIntent = await updateOpenweb3PaymentIntent({
     intentId: event.transaction.pspReference,
     paymentIntentUpdateParams,
-    secretKey: stripeConfig.secretKey,
+    secretKey: openweb3Config.secretKey,
+    publishableKey: openweb3Config.publishableKey,
   });
 
   const data = {
-    paymentIntent: { client_secret: stripePaymentIntent.client_secret },
-    publishableKey: stripeConfig.publishableKey,
+    paymentIntent: openweb3PaymentIntent as unknown as JSONObject,
+    publishableKey: openweb3Config.publishableKey,
   };
-  logger.debug(
-    {
-      paymentIntent: {
-        client_secret: data.paymentIntent.client_secret
-          ? obfuscateValue(data.paymentIntent.client_secret)
-          : "",
-      },
-      publishableKey: obfuscateValue(data.publishableKey),
-    },
-    "Transaction Process response",
+
+  const result = openweb3PaymentIntentToTransactionResult(
+    event.action.actionType,
+    openweb3PaymentIntent,
   );
 
-  const result = stripePaymentIntentToTransactionResult(
-    event.action.actionType,
-    stripePaymentIntent,
-  );
-  logger.debug(result, "Stripe -> Transaction result");
+  logger.debug(result, "Openweb3 -> Transaction result");
 
   const transactionProcessSessionResponse: TransactionProcessSessionResponse = {
-    data,
-    pspReference: stripePaymentIntent.id,
+    data: data,
+    pspReference: openweb3PaymentIntent.id,
     result,
-    amount: stripePaymentIntent.amount
-      ? getSaleorAmountFromStripeAmount({
-          amount: stripePaymentIntent.amount,
-          currency: stripePaymentIntent.currency,
-        })
-      : 0,
-    message: stripePaymentIntent.cancellation_reason || stripePaymentIntent.description || "",
-    externalUrl: stripePaymentIntent.id
-      ? getStripeExternalUrlForIntentId(stripePaymentIntent.id)
+    amount: +openweb3PaymentIntent.amount || 0,
+    time: openweb3PaymentIntent.createdAt,
+    message: openweb3PaymentIntent.walletId || "",
+    externalUrl: openweb3PaymentIntent.id
+      ? getOpenweb3ExternalUrlForIntentId(openweb3PaymentIntent.id)
       : undefined,
   };
   return transactionProcessSessionResponse;

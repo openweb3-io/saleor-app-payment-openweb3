@@ -12,16 +12,16 @@ import { transactionRefundRequestedSyncWebhook } from "./webhooks/saleor/transac
 export default createManifestHandler({
   async manifestFactory(context) {
     const manifest: AppManifest = {
-      id: "app.saleor.stripe",
-      name: "Stripe",
+      id: "app.saleor.openweb3",
+      name: "Openweb3",
       about: packageJson.description,
       tokenTargetUrl: `${context.appBaseUrl}/api/register`,
       appUrl: `${context.appBaseUrl}`,
       permissions: ["HANDLE_PAYMENTS"],
       version: packageJson.version,
       requiredSaleorVersion: ">=3.14.0",
-      homepageUrl: "https://github.com/saleor/saleor-app-payment-stripe",
-      supportUrl: "https://github.com/saleor/saleor-app-payment-stripe/issues",
+      homepageUrl: "https://github.com/saleor/saleor-app-payment-openweb3",
+      supportUrl: "https://github.com/saleor/saleor-app-payment-openweb3/issues",
       brand: {
         logo: {
           default: `${context.appBaseUrl}/logo.png`,

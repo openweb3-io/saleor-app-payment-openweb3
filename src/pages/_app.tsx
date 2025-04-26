@@ -34,7 +34,7 @@ function NextApp({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>Saleor App Payment Stripe</title>
+        <title>Saleor App Payment Openweb3</title>
         <link rel="icon" href="/favicon-32x32.png" type="image/png" />
         <meta name="theme-color" content="#635BFF" />
         <link rel="apple-touch-icon" sizes="48x48" href="/icons/icon-48x48.png" />

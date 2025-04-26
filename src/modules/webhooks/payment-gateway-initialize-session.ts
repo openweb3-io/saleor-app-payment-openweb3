@@ -22,13 +22,13 @@ export const PaymentGatewayInitializeSessionWebhookHandler = async (
   const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
   const appConfig = await configurator.getConfig();
 
-  const stripeConfig = paymentAppFullyConfiguredEntrySchema.parse(
+  const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
     getConfigurationForChannel(appConfig, event.sourceObject.channel.id),
   );
 
   logger.info({}, "Processing Payment Gateway Initialize request");
   const data = {
-    publishableKey: stripeConfig.publishableKey,
+    publishableKey: openweb3Config.publishableKey,
   };
   const paymentGatewayInitializeSessionResponse: PaymentGatewayInitializeSessionResponse = {
     data,

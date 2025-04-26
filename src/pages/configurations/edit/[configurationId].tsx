@@ -2,7 +2,7 @@ import { Text } from "@saleor/macaw-ui/next";
 import { withAuthorization } from "@saleor/app-sdk/app-bridge";
 import { useRouter } from "next/router";
 import { AppLayout } from "@/modules/ui/templates/AppLayout";
-import { StripeConfigurationForm } from "@/modules/ui/organisms/AddStripeConfigurationForm/AddStripeConfigurationForm";
+import { Openweb3ConfigurationForm } from "@/modules/ui/organisms/AddOpenweb3ConfigurationForm/AddOpenweb3ConfigurationForm";
 
 const EditConfigurationPage = () => {
   const router = useRouter();
@@ -13,19 +13,19 @@ const EditConfigurationPage = () => {
 
   return (
     <AppLayout
-      title="Stripe > Edit configuration"
+      title="Openweb3 > Edit configuration"
       description={
         <>
           <Text as="p" variant="body" size="medium">
-            Edit Stripe configuration.
+            Edit Openweb3 configuration.
           </Text>
           <Text as="p" variant="body" size="medium">
-            Note: Stripe Webhooks will be created automatically.
+            Note: Openweb3 Webhooks will be created automatically.
           </Text>
         </>
       }
     >
-      <StripeConfigurationForm configurationId={router.query.configurationId} />
+      <Openweb3ConfigurationForm configurationId={router.query.configurationId} />
     </AppLayout>
   );
 };

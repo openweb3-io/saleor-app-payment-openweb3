@@ -70,7 +70,7 @@ export const paymentAppConfigurationRouter = router({
         invariant(ctx.appUrl, "Missing app url");
 
         const configurator = getPaymentAppConfigurator(ctx.apiClient, ctx.saleorApiUrl);
-        return addConfigEntry(input, configurator, ctx.appUrl);
+        return addConfigEntry(input, configurator);
       }),
     update: protectedClientProcedure
       .input(paymentConfigEntryUpdate)

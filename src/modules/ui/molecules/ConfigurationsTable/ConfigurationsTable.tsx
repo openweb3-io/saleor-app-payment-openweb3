@@ -46,7 +46,7 @@ export const ConfigurationsTable = ({
       <Thead>
         <Tr>
           <Th>Configuration name</Th>
-          <Th className={tableStyles.summaryColumnTd}>Stripe Configuration</Th>
+          <Th className={tableStyles.summaryColumnTd}>Openweb3 Configuration</Th>
           <Th className={tableStyles.actionsColumnTd}>
             <span className="visually-hidden">Actions</span>
           </Th>

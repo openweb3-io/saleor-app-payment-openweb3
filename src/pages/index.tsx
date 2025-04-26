@@ -112,10 +112,10 @@ const IndexPage: NextPage = () => {
   return (
     <Box display="flex" flexDirection="column" gap={2} __maxWidth="45rem">
       <Text as="h1" size="large" variant="hero">
-        Welcome to Payment App Stripe 💰
+        Welcome to Payment App Openweb3 💰
       </Text>
       <Text as="p" size="large" variant="title">
-        Simplify your payment process and offer a seamless online shopping experience with Stripe
+        Simplify your payment process and offer a seamless online shopping experience with Openweb3
         payment integration for Saleor.
       </Text>
 
