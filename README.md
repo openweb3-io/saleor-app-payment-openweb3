@@ -10,15 +10,13 @@
 
 Openweb3 App is a payment integration app that allows merchants to accept online payments from customers using Openweb3 as their payment processor. Openweb3 is a popular global payment provider that offers a range of payment methods, including credit cards, bank transfers, and digital wallets.
 
-You can find an example of using the Openweb3 App at [https://github.com/saleor/example-nextjs-openweb3/](https://github.com/saleor/example-nextjs-openweb3/).
-
 > [!IMPORTANT]
-> To configure the Openweb3 App, you must have an account with [Openweb3](https://openweb3.com).
+> To configure the Openweb3 App, you must have an account with [Openweb3](https://docs.openweb3.io/docs/getting-started).
 
-The Openweb3 App allows for integrations with [Openweb3 Payment Element](https://openweb3.com/docs/payments/payment-element), meaning it can be used on [Web, iOS, Android, and React Native](https://openweb3.com/docs/payments/accept-a-payment?platform=web). Under the hood, it creates Openweb3 [Payment Intents](https://openweb3.com/docs/api/payment_intents) and handles calculations of total and balance in Saleor automatically.
+The Openweb3 App allows for integrations with [Openweb3 Payment Element](https://docs.openweb3.io/docs/getting-started), meaning it can be used on [Web, iOS, Android, and React Native](https://docs.openweb3.io/docs/getting-started). Under the hood, it creates Openweb3 [Payment Intents](https://docs.openweb3.io/reference) and handles calculations of total and balance in Saleor automatically.
 
 > [!NOTE]
-> Openweb3 App uses Openweb3 API version [2022-11-15](https://openweb3.com/docs/api/versioning).
+> Openweb3 App uses Openweb3 API version [2022-11-15](https://docs.openweb3.io/reference).
 
 ## Capabilities
 
@@ -31,7 +29,7 @@ The Openweb3 App implements the following [Saleor synchronous events related to 
 - [`TRANSACTION_CANCEL_REQUESTED`](https://docs.saleor.io/docs/3.x/api-reference/webhooks/enums/webhook-event-type-sync-enum#webhookeventtypesyncenumtransaction_cancel_requested)
 - [`TRANSACTION_REFUND_REQUESTED`](https://docs.saleor.io/docs/3.x/api-reference/webhooks/enums/webhook-event-type-sync-enum#webhookeventtypesyncenumtransaction_refund_requested)
 
-Furthermore, it's also prepared to handle [Openweb3 incoming webhooks](https://openweb3.com/docs/webhooks).
+Furthermore, it's also prepared to handle [Openweb3 incoming webhooks](https://docs.openweb3.io/reference/webhook).
 
 Openweb3 App follows the flow described in detail in the [Saleor Payment App documentation](https://docs.saleor.io/docs/3.x/developer/payments#payment-app).
 
@@ -238,7 +236,7 @@ The response:
 }
 ```
 
-You can find an example of using the Openweb3 App at [https://github.com/saleor/example-nextjs-openweb3/](https://github.com/saleor/example-nextjs-openweb3/).
+You can find an example of using the Openweb3 App at [https://docs.openweb3.io/docs/getting-started](https://docs.openweb3.io/docs/getting-started).
 
 ## Development
 
@@ -287,16 +285,12 @@ The app will be available at `http://localhost:3000`.
 
 To run tests, one needs to provide additional environment variables. Copy the `.env.test` file to `.env.test.local`.The `.env.test.local` should contain the following variables:
 
-| env variable name                  | required?  | description                                                                      | example                                                                                                                            |
-| ---------------------------------- | :--------: | :------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
-| `TEST_SALEOR_API_URL`              | _required_ | Full URL to the Saleor GraphQL endpoint                                          | `https://saleor.cloud/graphql/`                                                                                                    |
-| `TEST_SALEOR_APP_TOKEN`            | _required_ | [AppToken](https://docs.saleor.io/docs/3.x/api-reference/apps/objects/app-token) | `3DZ7CbFTyPETthDixPtFpPysoKG4FP`                                                                                                   |
-| `TEST_SALEOR_APP_ID`               | _required_ | [App.id](https://docs.saleor.io/docs/3.x/api-reference/apps/objects/app)         | `QXBwOjk=`                                                                                                                         |
-| `TEST_SALEOR_JWKS`                 | _required_ | stringified JWKS                                                                 | `"{\"keys\": [{\"kty\": \"RSA\", \"key_ops\": [\"verify\"], \"n\": \"...\", \"e\": \"AQAB\", \"use\": \"sig\", \"kid\": \"1\"}]}"` |
-| `TEST_PAYMENT_APP_SECRET_KEY`      | _required_ | Secret Key from Openweb3                                                         | `sk_test_51LVZwxEosE…`                                                                                                             |
-| `TEST_PAYMENT_APP_PUBLISHABLE_KEY` | _required_ | Publishable Key from Openweb3                                                    | `pk_test_51LVZwxEos…`                                                                                                              |
-| `TEST_PAYMENT_APP_WEBHOOK_ID`      | _required_ | ID of a webhook                                                                  | `we_1JaGFlH1Vac4G4dbZnQ8bviV`                                                                                                      |
-| `TEST_PAYMENT_APP_WEBHOOK_SECRET`  | _required_ | Webhook Secret from Openweb3                                                     | `whsec_c09e3d87…`                                                                                                                  |
+| env variable name       | required?  | description                                                                      | example                                                                                                                            |
+| ----------------------- | :--------: | :------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `TEST_SALEOR_API_URL`   | _required_ | Full URL to the Saleor GraphQL endpoint                                          | `https://saleor.cloud/graphql/`                                                                                                    |
+| `TEST_SALEOR_APP_TOKEN` | _required_ | [AppToken](https://docs.saleor.io/docs/3.x/api-reference/apps/objects/app-token) | `3DZ7CbFTyPETthDixPtFpPysoKG4FP`                                                                                                   |
+| `TEST_SALEOR_APP_ID`    | _required_ | [App.id](https://docs.saleor.io/docs/3.x/api-reference/apps/objects/app)         | `QXBwOjk=`                                                                                                                         |
+| `TEST_SALEOR_JWKS`      | _required_ | stringified JWKS                                                                 | `"{\"keys\": [{\"kty\": \"RSA\", \"key_ops\": [\"verify\"], \"n\": \"...\", \"e\": \"AQAB\", \"use\": \"sig\", \"kid\": \"1\"}]}"` |
 
 Then run the following command:
 
