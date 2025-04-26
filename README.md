@@ -1,3 +1,7 @@
+<div align="center" style="margin-bottom: 30px">
+  <img style="border-radius: 30%" width="150" alt="" src="./public/logo.png">
+</div>
+
 # Openweb3 App
 
 > [!CAUTION]
