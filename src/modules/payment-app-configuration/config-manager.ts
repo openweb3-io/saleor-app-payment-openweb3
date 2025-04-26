@@ -1,5 +1,5 @@
 import { uuidv7 } from "uuidv7";
-import { validateStripeKeys } from "../stripe/stripe-api";
+import { validateOpenweb3Keys } from "../openweb3/openweb3-api";
 import { type ConfigEntryUpdate } from "./input-schemas";
 import { obfuscateConfigEntry } from "./utils";
 import { type PaymentAppConfigurator } from "./payment-app-configuration";
@@ -7,8 +7,7 @@ import {
   type PaymentAppConfigEntryFullyConfigured,
   type PaymentAppFormConfigEntry,
 } from "./config-entry";
-import { createStripeWebhook, deleteStripeWebhook } from "./webhook-manager";
-import { createLogger, redactError, redactLogObject } from "@/lib/logger";
+import { createLogger, redactLogObject } from "@/lib/logger";
 import { BaseError } from "@/errors";
 
 export const EntryNotFoundError = BaseError.subclass("EntryNotFoundError");
@@ -79,28 +78,19 @@ export const getConfigEntryDecrypted = async (
 export const addConfigEntry = async (
   newConfigEntry: PaymentAppFormConfigEntry,
   configurator: PaymentAppConfigurator,
-  appUrl: string,
 ) => {
   const logger = createLogger(
     { saleorApiUrl: configurator.saleorApiUrl },
     { msgPrefix: "[addConfigEntry] " },
   );
 
-  await validateStripeKeys(newConfigEntry.secretKey, newConfigEntry.publishableKey);
+  await validateOpenweb3Keys(newConfigEntry.secretKey, newConfigEntry.publishableKey);
 
   logger.debug("Creating new webhook for config entry");
-  const { webhookSecret, webhookId } = await createStripeWebhook({
-    appUrl,
-    secretKey: newConfigEntry.secretKey,
-    saleorApiUrl: configurator.saleorApiUrl,
-    configurator,
-  });
 
   const uuid = uuidv7();
   const config = {
     ...newConfigEntry,
-    webhookSecret,
-    webhookId,
     configurationId: uuid,
   } satisfies PaymentAppConfigEntryFullyConfigured;
 
@@ -156,32 +146,6 @@ export const deleteConfigEntry = async (
   }
 
   logger.debug({ existingEntry: redactLogObject(existingEntry) }, "Found entry");
-
-  logger.debug(
-    { webhookId: existingEntry.webhookId },
-    "Checking if other config is using assosiated webhook",
-  );
-
-  const otherEntries = entries.filter((entry) => entry.configurationId !== configurationId);
-  const isWebhookUsed = otherEntries.some((entry) => entry.webhookId === existingEntry.webhookId);
-
-  if (!isWebhookUsed) {
-    logger.debug("Deleting webhook linked with config entry");
-    try {
-      await deleteStripeWebhook({
-        webhookId: existingEntry.webhookId,
-        secretKey: existingEntry.secretKey,
-      });
-    } catch (e) {
-      // Ignore error
-      logger.warn(
-        { error: redactError(e), webhookId: existingEntry.webhookId },
-        "Webhook couldn't be deleted with the config",
-      );
-    }
-  } else {
-    logger.debug("Webhook linked with deleted config entry is used by other config entries");
-  }
 
   await configurator.deleteConfigEntry(configurationId);
   logger.info({ configurationId }, "Config entry deleted");

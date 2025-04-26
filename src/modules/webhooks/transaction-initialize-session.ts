@@ -1,19 +1,22 @@
 import {
   getEnvironmentFromKey,
-  getStripeExternalUrlForIntentId,
-  initializeStripePaymentIntent,
-  stripePaymentIntentToTransactionResult,
-  transactionSessionInitializeEventToStripeCreate,
-} from "../stripe/stripe-api";
-import { getSaleorAmountFromStripeAmount } from "../stripe/currencies";
+  getOpenweb3ApiClient,
+  getOpenweb3ExternalUrlForIntentId,
+  initializeOpenweb3PaymentIntent,
+  openweb3PaymentIntentToTransactionResult,
+  PLATFORM,
+  transactionSessionInitializeEventToOepnweb3Create,
+} from "../openweb3/openweb3-api";
 import { getWebhookPaymentAppConfigurator } from "../payment-app-configuration/payment-app-configuration-factory";
 import { paymentAppFullyConfiguredEntrySchema } from "../payment-app-configuration/config-entry";
-import { obfuscateConfig, obfuscateValue } from "../app-configuration/utils";
+import { obfuscateConfig } from "../app-configuration/utils";
 import { getConfigurationForChannel } from "../payment-app-configuration/payment-app-configuration";
+import { safeParse } from "../payment-app-configuration/utils";
 import { type TransactionInitializeSessionResponse } from "@/schemas/TransactionInitializeSession/TransactionInitializeSessionResponse.mjs";
 import { type TransactionInitializeSessionEventFragment } from "generated/graphql";
 import { invariant } from "@/lib/invariant";
 import { createLogger } from "@/lib/logger";
+import { type JSONObject } from "@/types";
 
 export const TransactionInitializeSessionWebhookHandler = async (
   event: TransactionInitializeSessionEventFragment,
@@ -37,70 +40,72 @@ export const TransactionInitializeSessionWebhookHandler = async (
     "Received event",
   );
 
-  const app = event.recipient;
-  invariant(app, "Missing event.recipient!");
+  try {
+    const app = event.recipient;
+    invariant(app, "Missing event.recipient!");
 
-  const { privateMetadata } = app;
-  const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
-  const appConfig = await configurator.getConfig();
+    const { privateMetadata } = app;
+    const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
+    const appConfig = await configurator.getConfig();
 
-  const stripeConfig = paymentAppFullyConfiguredEntrySchema.parse(
-    getConfigurationForChannel(appConfig, event.sourceObject.channel.id),
-  );
+    const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
+      getConfigurationForChannel(appConfig, event.sourceObject.channel.id),
+    );
 
-  logger.info({}, "Processing Transaction Initialize request");
+    logger.info({}, "Processing Transaction Initialize request");
+    console.log("event=", event);
+    const paymentIntentCreateParams = transactionSessionInitializeEventToOepnweb3Create(event);
 
-  const paymentIntentCreateParams = transactionSessionInitializeEventToStripeCreate(event);
-  logger.debug({
-    paymentIntentCreateParams: obfuscateConfig(paymentIntentCreateParams),
-    environment: getEnvironmentFromKey(stripeConfig.publishableKey),
-  });
+    logger.debug({
+      paymentIntentCreateParams: obfuscateConfig(paymentIntentCreateParams),
+      environment: getEnvironmentFromKey(openweb3Config.publishableKey),
+    });
 
-  const stripePaymentIntent = await initializeStripePaymentIntent({
-    paymentIntentCreateParams,
-    secretKey: stripeConfig.secretKey,
-  });
+    const openweb3PaymentIntent = await initializeOpenweb3PaymentIntent({
+      paymentIntentCreateParams,
+      secretKey: openweb3Config.secretKey,
+      publishableKey: openweb3Config.publishableKey,
+    });
 
-  const data = {
-    paymentIntent: { client_secret: stripePaymentIntent.client_secret },
-    publishableKey: stripeConfig.publishableKey,
-  };
-  logger.debug(
-    {
-      paymentIntent: {
-        client_secret: data.paymentIntent.client_secret
-          ? obfuscateValue(data.paymentIntent.client_secret)
-          : "",
+    const data = {
+      paymentIntent: safeParse(openweb3PaymentIntent) as JSONObject,
+      publishableKey: openweb3Config.publishableKey,
+    };
+
+    const result = openweb3PaymentIntentToTransactionResult(
+      event.action.actionType,
+      openweb3PaymentIntent,
+    );
+
+    logger.debug(result, "Openweb3 -> Transaction result");
+
+    const platformURL =
+      process.env[
+        openweb3PaymentIntent.metadata?.platform === PLATFORM.TELEGRAM
+          ? "TELEGRAM_MINIAPP_URL"
+          : "DEJAY_MINIAPP_URL"
+      ];
+
+    const redirectUrl = `${platformURL}?startapp=Pay_${openweb3PaymentIntent.id}`;
+
+    const transactionInitializeSessionResponse: TransactionInitializeSessionResponse = {
+      data: {
+        ...data,
+        redirectUrl,
       },
-      publishableKey: obfuscateValue(data.publishableKey),
-    },
-    "Transaction Initialize response",
-  );
+      result,
+      pspReference: redirectUrl,
+      amount: paymentIntentCreateParams.amount || 0,
+      time: openweb3PaymentIntent.createdAt,
+      message: openweb3PaymentIntent.walletId || "",
+      externalUrl: openweb3PaymentIntent.id
+        ? getOpenweb3ExternalUrlForIntentId(openweb3PaymentIntent.id)
+        : undefined,
+    };
 
-  const result = stripePaymentIntentToTransactionResult(
-    event.action.actionType,
-    stripePaymentIntent,
-  );
-  logger.debug(result, "Stripe -> Transaction result");
-
-  const transactionInitializeSessionResponse: TransactionInitializeSessionResponse = {
-    data,
-    pspReference: stripePaymentIntent.id,
-    result,
-    amount: stripePaymentIntent.amount
-      ? getSaleorAmountFromStripeAmount({
-          amount: stripePaymentIntent.amount,
-          currency: stripePaymentIntent.currency,
-        })
-      : 0,
-    time: stripePaymentIntent.created
-      ? new Date(stripePaymentIntent.created * 1000).toISOString()
-      : undefined,
-    message: stripePaymentIntent.cancellation_reason || stripePaymentIntent.description || "",
-    externalUrl: stripePaymentIntent.id
-      ? getStripeExternalUrlForIntentId(stripePaymentIntent.id)
-      : undefined,
-  };
-
-  return transactionInitializeSessionResponse;
+    return transactionInitializeSessionResponse;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
 };

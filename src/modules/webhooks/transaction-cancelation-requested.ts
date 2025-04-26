@@ -1,14 +1,8 @@
 import { getWebhookPaymentAppConfigurator } from "../payment-app-configuration/payment-app-configuration-factory";
 import { paymentAppFullyConfiguredEntrySchema } from "../payment-app-configuration/config-entry";
 import { getConfigurationForChannel } from "../payment-app-configuration/payment-app-configuration";
-import {
-  getStripeExternalUrlForIntentId,
-  processStripePaymentIntentCancelRequest,
-} from "../stripe/stripe-api";
-import { getSaleorAmountFromStripeAmount } from "../stripe/currencies";
 import { type TransactionCancelationRequestedResponse } from "@/schemas/TransactionCancelationRequested/TransactionCancelationRequestedResponse.mjs";
 import {
-  TransactionEventTypeEnum,
   type TransactionCancelationRequestedEventFragment,
   TransactionActionEnum,
 } from "generated/graphql";
@@ -30,31 +24,38 @@ export const TransactionCancelationRequestedWebhookHandler = async (
   const { privateMetadata } = app;
   const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
   const appConfig = await configurator.getConfig();
-  const stripeConfig = paymentAppFullyConfiguredEntrySchema.parse(
+  const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
     getConfigurationForChannel(appConfig, event.transaction.sourceObject?.channel.id),
   );
 
-  const stripePaymentIntentCancelResponse = await processStripePaymentIntentCancelRequest({
-    paymentIntentId: event.transaction.pspReference,
-    secretKey: stripeConfig.secretKey,
-  });
+  return {
+    pspReference: "1237",
+    result: "CANCEL_FAILURE",
+    amount: 20,
+  };
 
-  const transactionCancelationRequestedResponse: TransactionCancelationRequestedResponse =
-    stripePaymentIntentCancelResponse.status === "canceled"
-      ? // Sync flow
-        {
-          pspReference: stripePaymentIntentCancelResponse.id,
-          amount: getSaleorAmountFromStripeAmount({
-            amount: stripePaymentIntentCancelResponse.amount,
-            currency: stripePaymentIntentCancelResponse.currency,
-          }),
-          result: TransactionEventTypeEnum.CancelSuccess,
-          externalUrl: getStripeExternalUrlForIntentId(stripePaymentIntentCancelResponse.id),
-        }
-      : // Async flow; waiting for confirmation
-        {
-          pspReference: stripePaymentIntentCancelResponse.id,
-        };
+  // const openweb3PaymentIntentCancelResponse = await processOpenweb3PaymentIntentCancelRequest({
+  //   paymentIntentId: event.transaction.pspReference,
+  //   secretKey: openweb3Config.secretKey,
+  //   publishableKey: openweb3Config.publishableKey,
+  // });
 
-  return transactionCancelationRequestedResponse;
+  // const transactionCancelationRequestedResponse: TransactionCancelationRequestedResponse =
+  //   openweb3PaymentIntentCancelResponse.status === "canceled"
+  //     ? // Sync flow
+  //       {
+  //         pspReference: openweb3PaymentIntentCancelResponse.id,
+  //         amount: getSaleorAmountFromOpenweb3Amount({
+  //           amount: openweb3PaymentIntentCancelResponse.amount,
+  //           currency: openweb3PaymentIntentCancelResponse.currency,
+  //         }),
+  //         result: TransactionEventTypeEnum.CancelSuccess,
+  //         externalUrl: getOpenweb3ExternalUrlForIntentId(openweb3PaymentIntentCancelResponse.id),
+  //       }
+  //     : // Async flow; waiting for confirmation
+  //       {
+  //         pspReference: openweb3PaymentIntentCancelResponse.id,
+  //       };
+
+  // return transactionCancelationRequestedResponse;
 };

@@ -1,4 +1,4 @@
-# saleor-app-payment-stripe
+# saleor-app-payment-openweb3
 
 ## 0.4.0
 
@@ -10,7 +10,7 @@
 
 ### Minor Changes
 
-- 6817fbe: Fixed blank configuration screen; Stripe API is now on the latest version
+- 6817fbe: Fixed blank configuration screen; Openweb3 API is now on the latest version
 
 ### Patch Changes
 

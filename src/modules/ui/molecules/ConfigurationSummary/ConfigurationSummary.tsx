@@ -1,7 +1,7 @@
 import { Box } from "@saleor/macaw-ui/next";
-import { ChipSuccess, ChipStripeOrange, ChipInfo } from "@/modules/ui/atoms/Chip/Chip";
+import { ChipSuccess, ChipOpenweb3Orange, ChipInfo } from "@/modules/ui/atoms/Chip/Chip";
 import { type PaymentAppUserVisibleConfigEntry } from "@/modules/payment-app-configuration/config-entry";
-import { getEnvironmentFromKey, getStripeWebhookDashboardLink } from "@/modules/stripe/stripe-api";
+import { getEnvironmentFromKey } from "@/modules/openweb3/openweb3-api";
 import { appBridgeInstance } from "@/app-bridge-instance";
 
 export const ConfigurationSummary = ({ config }: { config: PaymentAppUserVisibleConfigEntry }) => {
@@ -19,10 +19,10 @@ export const ConfigurationSummary = ({ config }: { config: PaymentAppUserVisible
         Environment
       </Box>
       <Box as="dd" margin={0} textAlign="right">
-        {getEnvironmentFromKey(config.publishableKey) === "live" ? (
-          <ChipSuccess>LIVE</ChipSuccess>
+        {getEnvironmentFromKey(config.publishableKey) === "production" ? (
+          <ChipSuccess>PRODUCTION</ChipSuccess>
         ) : (
-          <ChipStripeOrange>TESTING</ChipStripeOrange>
+          <ChipOpenweb3Orange>DEVELOPMENT</ChipOpenweb3Orange>
         )}
       </Box>
       <Box as="dt" margin={0} fontSize="captionSmall" color="textNeutralSubdued">
@@ -30,27 +30,18 @@ export const ConfigurationSummary = ({ config }: { config: PaymentAppUserVisible
       </Box>
       <Box as="dd" margin={0} textAlign="right">
         <a
-          href={getStripeWebhookDashboardLink(
-            config.webhookId,
-            getEnvironmentFromKey(config.publishableKey),
-          )}
           onClick={() =>
             void appBridgeInstance?.dispatch({
               type: "redirect",
               payload: {
-                actionId: "getStripeWebhookDashboardLink",
-                to: getStripeWebhookDashboardLink(
-                  config.webhookId,
-                  getEnvironmentFromKey(config.publishableKey),
-                ),
+                actionId: "",
+                to: "",
                 newContext: true,
               },
             })
           }
           target="_blank"
-        >
-          <ChipInfo>{config.webhookId}</ChipInfo>
-        </a>
+        ></a>
       </Box>
     </Box>
   );

@@ -1,19 +1,10 @@
 import { paymentAppFullyConfiguredEntrySchema } from "../payment-app-configuration/config-entry";
 import { getConfigurationForChannel } from "../payment-app-configuration/payment-app-configuration";
 import { getWebhookPaymentAppConfigurator } from "../payment-app-configuration/payment-app-configuration-factory";
-import {
-  getSaleorAmountFromStripeAmount,
-  getStripeAmountFromSaleorMoney,
-} from "../stripe/currencies";
-import {
-  getStripeExternalUrlForIntentId,
-  processStripePaymentIntentRefundRequest,
-} from "../stripe/stripe-api";
 import { invariant } from "@/lib/invariant";
 import { type TransactionRefundRequestedResponse } from "@/schemas/TransactionRefundRequesed/TransactionRefundRequestedResponse.mjs";
 import {
   TransactionActionEnum,
-  TransactionEventTypeEnum,
   type TransactionRefundRequestedEventFragment,
 } from "generated/graphql";
 
@@ -34,62 +25,13 @@ export const TransactionRefundRequestedWebhookHandler = async (
 
   const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
   const appConfig = await configurator.getConfig();
-  const stripeConfig = paymentAppFullyConfiguredEntrySchema.parse(
+  const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
     getConfigurationForChannel(appConfig, event.transaction.sourceObject?.channel.id),
   );
 
-  const stripePaymentIntentRefundResponse = await processStripePaymentIntentRefundRequest({
-    stripeAmount:
-      event.action.amount && event.transaction.sourceObject?.total?.gross?.currency
-        ? getStripeAmountFromSaleorMoney({
-            amount: event.action.amount,
-            currency: event.transaction.sourceObject.total.gross.currency,
-          })
-        : undefined,
-    paymentIntentId: event.transaction.pspReference,
-    secretKey: stripeConfig.secretKey,
-  });
-
-  const pspReference = stripePaymentIntentRefundResponse.id;
-  const amount = getSaleorAmountFromStripeAmount({
-    amount: stripePaymentIntentRefundResponse.amount,
-    currency: stripePaymentIntentRefundResponse.currency,
-  });
-  const externalUrl = getStripeExternalUrlForIntentId(pspReference);
-
-  switch (stripePaymentIntentRefundResponse.status) {
-    case "succeeded": {
-      const transactionRefundRequestedResponse: TransactionRefundRequestedResponse = {
-        result: TransactionEventTypeEnum.RefundSuccess,
-        pspReference,
-        amount,
-        externalUrl,
-      };
-      return transactionRefundRequestedResponse;
-    }
-    case "canceled":
-    case "failed": {
-      const transactionRefundRequestedResponse: TransactionRefundRequestedResponse = {
-        result: TransactionEventTypeEnum.RefundFailure,
-        pspReference,
-        amount,
-        externalUrl,
-      };
-      return transactionRefundRequestedResponse;
-    }
-    case "requires_action": {
-      const transactionRefundRequestedResponse: TransactionRefundRequestedResponse = {
-        pspReference,
-        message: "requires_action",
-      };
-      return transactionRefundRequestedResponse;
-    }
-    case "pending":
-    default: {
-      const transactionRefundRequestedResponse: TransactionRefundRequestedResponse = {
-        pspReference,
-      };
-      return transactionRefundRequestedResponse;
-    }
-  }
+  return {
+    pspReference: "",
+    result: "REFUND_FAILURE",
+    amount: 0,
+  };
 };

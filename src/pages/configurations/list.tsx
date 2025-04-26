@@ -4,7 +4,7 @@ import { AppLayout, AppLayoutRow } from "@/modules/ui/templates/AppLayout";
 import { trpcClient } from "@/modules/trpc/trpc-client";
 import { getErrorHandler } from "@/modules/trpc/utils";
 import { useFetchChannelsQuery } from "generated/graphql";
-import { StripeConfigurationsList } from "@/modules/ui/organisms/StripeConfigurationList/StripeConfigurationList";
+import { Openweb3ConfigurationsList } from "@/modules/ui/organisms/Openweb3ConfigurationList/Openweb3ConfigurationList";
 import { ChannelToConfigurationList } from "@/modules/ui/organisms/ChannelToConfigurationList/ChannelToConfigurationList";
 import { Skeleton } from "@/modules/ui/atoms/Skeleton/Skeleton";
 
@@ -35,16 +35,16 @@ function ListConfigurationPage() {
   const hasAnyMappings = Object.values(channelMappings.data || {}).filter(Boolean).length > 0;
 
   return (
-    <AppLayout title="Stripe">
+    <AppLayout title="Openweb3">
       <AppLayoutRow
-        title="Stripe Configurations"
-        description="Create Stripe configurations that can be later assigned to Saleor channels."
+        title="Openweb3 Configurations"
+        description="Create Openweb3 configurations that can be later assigned to Saleor channels."
         disabled={channelMappings.isLoading}
       >
         {allConfigurations.isLoading ? (
           <Skeleton height={40} />
         ) : (
-          <StripeConfigurationsList configurations={allConfigurations.data || []} />
+          <Openweb3ConfigurationsList configurations={allConfigurations.data || []} />
         )}
       </AppLayoutRow>
       <AppLayoutRow
@@ -53,7 +53,7 @@ function ListConfigurationPage() {
         description={
           <Box>
             <Text as="p" variant="body" size="medium">
-              Assign Stripe configurations to Saleor channels.
+              Assign Openweb3 configurations to Saleor channels.
             </Text>
             {!channelMappings.isLoading && !hasAnyMappings && (
               <Box marginTop={6}>
@@ -61,7 +61,7 @@ function ListConfigurationPage() {
                   No channels have configurations assigned.
                 </Text>
                 <Text as="p" variant="body" size="medium" color="textCriticalDefault">
-                  This means payments are not processed by Stripe.
+                  This means payments are not processed by Openweb3.
                 </Text>
               </Box>
             )}

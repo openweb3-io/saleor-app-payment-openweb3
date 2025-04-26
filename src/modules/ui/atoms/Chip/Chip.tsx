@@ -15,7 +15,7 @@ export const ChipDanger = ({ children }: { children: ReactNode }) => (
     </Text>
   </Chip>
 );
-export const ChipStripeOrange = ({ children }: { children: ReactNode }) => (
+export const ChipOpenweb3Orange = ({ children }: { children: ReactNode }) => (
   <Chip size="medium" __backgroundColor="#ed6704">
     <Text __color="white" size="small" variant="caption">
       {children}

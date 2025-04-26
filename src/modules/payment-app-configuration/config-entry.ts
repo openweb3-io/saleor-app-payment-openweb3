@@ -1,13 +1,8 @@
 import { z } from "zod";
 import { deobfuscateValues } from "../app-configuration/utils";
 
-export const DANGEROUS_paymentAppConfigHiddenSchema = z.object({
-  webhookSecret: z.string().min(1),
-});
-
 export const paymentAppConfigEntryInternalSchema = z.object({
   configurationId: z.string().min(1),
-  webhookId: z.string().min(1),
 });
 
 export const paymentAppConfigEntryEncryptedSchema = z.object({
@@ -25,9 +20,7 @@ export const paymentAppConfigEntryPublicSchema = z.object({
     .min(1, { message: "Configuration name is required" }),
 });
 
-export const paymentAppConfigEntrySchema = DANGEROUS_paymentAppConfigHiddenSchema.merge(
-  paymentAppConfigEntryEncryptedSchema,
-)
+export const paymentAppConfigEntrySchema = paymentAppConfigEntryEncryptedSchema
   .merge(paymentAppConfigEntryPublicSchema)
   .merge(paymentAppConfigEntryInternalSchema);
 
@@ -45,8 +38,6 @@ export const paymentAppFullyConfiguredEntrySchema = z
     configurationId: paymentAppConfigEntryInternalSchema.shape.configurationId,
     secretKey: paymentAppConfigEntryEncryptedSchema.shape.secretKey,
     publishableKey: paymentAppConfigEntryPublicSchema.shape.publishableKey,
-    webhookSecret: DANGEROUS_paymentAppConfigHiddenSchema.shape.webhookSecret,
-    webhookId: paymentAppConfigEntryInternalSchema.shape.webhookId,
   })
   .required();
 
@@ -55,12 +46,12 @@ export const paymentAppFormConfigEntrySchema = z
   .object({
     configurationName: paymentAppConfigEntryPublicSchema.shape.configurationName,
     secretKey: paymentAppConfigEntryEncryptedSchema.shape.secretKey.startsWith(
-      "sk_",
-      "This isn't a Stripe secret key, it must start with sk_",
+      "",
+      "This isn't a Openweb3 secret key, it must start with empty",
     ),
     publishableKey: paymentAppConfigEntryPublicSchema.shape.publishableKey.startsWith(
-      "pk_",
-      "This isn't a Stripe publishable key, it must start with pk_",
+      "",
+      "This isn't a Openweb3 publishable key, it must start with empty",
     ),
   })
   .strict()

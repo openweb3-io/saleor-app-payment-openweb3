@@ -26,7 +26,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
-.env*.local
+.env*
 .envfile
 .saleor-app-auth.json
 
@@ -49,8 +49,5 @@ generated/
 
 # Sentry
 next.config.original.js
-
-# env vars
-.env
 
 public/.well-known
