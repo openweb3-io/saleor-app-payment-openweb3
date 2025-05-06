@@ -170,10 +170,7 @@ export const initializeOpenweb3PaymentIntent = async ({
       },
     );
 
-    console.log(amount);
-
     const res = await openweb3.orders.create({
-      userId: `${metadata?.userId}`,
       amount: `${amount}`,
       currency: "USDT",
       uid,
@@ -181,6 +178,7 @@ export const initializeOpenweb3PaymentIntent = async ({
         [key: string]: string;
       },
     });
+
     return res;
   }
 };
@@ -197,7 +195,7 @@ export const updateOpenweb3PaymentIntent = async ({
   publishableKey: string;
 }): Promise<Order> => {
   const metadata = paymentIntentUpdateParams.metadata;
-  const uid = `${metadata?.userId}-$${metadata?.checkoutId}-${metadata?.transactionId}-${metadata?.channelId}`;
+  const uid = `${metadata?.userId}-$${metadata?.checkoutId}`;
   const openweb3 = getOpenweb3ApiClient(secretKey, publishableKey);
 
   try {
@@ -205,7 +203,7 @@ export const updateOpenweb3PaymentIntent = async ({
     return res;
   } catch {
     const res = await openweb3.orders.create({
-      userId: `${metadata?.userId}`,
+      creator: `${metadata?.userId}`,
       amount: `${paymentIntentUpdateParams.amount}`,
       // currency: paymentIntentCreateParams.currency,
       currency: "USDT",

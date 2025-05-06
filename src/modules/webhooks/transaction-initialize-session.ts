@@ -76,8 +76,6 @@ export const TransactionInitializeSessionWebhookHandler = async (
       openweb3PaymentIntent,
     );
 
-    console.log(result);
-
     logger.debug(result, "Openweb3 -> Transaction result");
 
     const platformURL =
@@ -87,7 +85,7 @@ export const TransactionInitializeSessionWebhookHandler = async (
           : "DEJAY_MINIAPP_URL"
       ];
 
-    const redirectUrl = `${platformURL}/startapp?Pay_${openweb3PaymentIntent.id}`;
+    const redirectUrl = `${platformURL}?startapp=Pay_${openweb3PaymentIntent.id}`;
 
     const transactionInitializeSessionResponse: TransactionInitializeSessionResponse = {
       data: {
