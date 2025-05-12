@@ -13,6 +13,9 @@ const setCorsHeaders = (res: NextApiResponse) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // 设置 CORS 头信息
+  setCorsHeaders(res);
+
   // 处理 OPTIONS 请求
   if (req.method === "OPTIONS") {
     setCorsHeaders(res);
@@ -25,9 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 设置 CORS 头信息
-    setCorsHeaders(res);
-
     // 检查 platform 是否在白名单中
     const platform = req.headers["platform"] as string;
     if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {

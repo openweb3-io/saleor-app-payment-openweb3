@@ -8,7 +8,9 @@ import {
   openweb3PaymentIntentToTransactionResult,
   getOpenweb3ExternalUrlForIntentId,
   updateOpenweb3PaymentIntent,
+  PLATFORM,
 } from "../openweb3/openweb3-api";
+import { safeParse } from "../payment-app-configuration/utils";
 import { type TransactionProcessSessionEventFragment } from "generated/graphql";
 import { type TransactionProcessSessionResponse } from "@/schemas/TransactionProcessSession/TransactionProcessSessionResponse.mjs";
 import { createLogger } from "@/lib/logger";
@@ -34,55 +36,72 @@ export const TransactionProcessSessionWebhookHandler = async (
     "Received event",
   );
 
-  const app = event.recipient;
-  invariant(app, "Missing event.recipient!");
+  try {
+    const app = event.recipient;
+    invariant(app, "Missing event.recipient!");
 
-  const { privateMetadata } = app;
-  const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
-  const appConfig = await configurator.getConfig();
+    const { privateMetadata } = app;
+    const configurator = getWebhookPaymentAppConfigurator({ privateMetadata }, saleorApiUrl);
+    const appConfig = await configurator.getConfig();
 
-  const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
-    getConfigurationForChannel(appConfig, event.sourceObject.channel.id),
-  );
+    const openweb3Config = paymentAppFullyConfiguredEntrySchema.parse(
+      getConfigurationForChannel(appConfig, event.sourceObject.channel.id),
+    );
 
-  logger.info({}, "Processing Transaction Initialize request");
+    logger.info({}, "Processing Transaction Process request");
 
-  const paymentIntentUpdateParams = transactionSessionProcessEventToOpenweb3Update(event);
+    const paymentIntentUpdateParams = transactionSessionProcessEventToOpenweb3Update(event);
 
-  logger.debug({
-    paymentIntentUpdateParams: obfuscateConfig(paymentIntentUpdateParams),
-    environment: getEnvironmentFromKey(openweb3Config.publishableKey),
-  });
+    logger.debug({
+      paymentIntentUpdateParams: obfuscateConfig(paymentIntentUpdateParams),
+      environment: getEnvironmentFromKey(openweb3Config.publishableKey),
+    });
 
-  const openweb3PaymentIntent = await updateOpenweb3PaymentIntent({
-    intentId: event.transaction.pspReference,
-    paymentIntentUpdateParams,
-    secretKey: openweb3Config.secretKey,
-    publishableKey: openweb3Config.publishableKey,
-  });
+    const openweb3PaymentIntent = await updateOpenweb3PaymentIntent({
+      intentId: event.transaction.pspReference,
+      paymentIntentUpdateParams,
+      secretKey: openweb3Config.secretKey,
+      publishableKey: openweb3Config.publishableKey,
+    });
 
-  const data = {
-    paymentIntent: openweb3PaymentIntent as unknown as JSONObject,
-    publishableKey: openweb3Config.publishableKey,
-  };
+    const data = {
+      paymentIntent: safeParse(openweb3PaymentIntent) as JSONObject,
+      publishableKey: openweb3Config.publishableKey,
+    };
 
-  const result = openweb3PaymentIntentToTransactionResult(
-    event.action.actionType,
-    openweb3PaymentIntent,
-  );
+    const result = openweb3PaymentIntentToTransactionResult(
+      event.action.actionType,
+      openweb3PaymentIntent,
+    );
 
-  logger.debug(result, "Openweb3 -> Transaction result");
+    logger.debug(result, "Openweb3 -> Transaction result");
 
-  const transactionProcessSessionResponse: TransactionProcessSessionResponse = {
-    data: data,
-    pspReference: openweb3PaymentIntent.id,
-    result,
-    amount: +openweb3PaymentIntent.amount || 0,
-    time: openweb3PaymentIntent.createdAt,
-    message: openweb3PaymentIntent.walletId || "",
-    externalUrl: openweb3PaymentIntent.id
-      ? getOpenweb3ExternalUrlForIntentId(openweb3PaymentIntent.id)
-      : undefined,
-  };
-  return transactionProcessSessionResponse;
+    const platformURL =
+      process.env[
+        openweb3PaymentIntent.metadata?.platform === PLATFORM.TELEGRAM
+          ? "TELEGRAM_MINIAPP_URL"
+          : "DEJAY_MINIAPP_URL"
+      ];
+
+    const redirectUrl = `${platformURL}?startapp=Pay_${openweb3PaymentIntent.id}`;
+
+    const transactionProcessSessionResponse: TransactionProcessSessionResponse = {
+      data: {
+        ...data,
+        redirectUrl,
+      },
+      result,
+      pspReference: redirectUrl,
+      amount: paymentIntentUpdateParams.amount || 0,
+      time: openweb3PaymentIntent.createdAt,
+      message: openweb3PaymentIntent.walletId || "",
+      externalUrl: openweb3PaymentIntent.id
+        ? getOpenweb3ExternalUrlForIntentId(openweb3PaymentIntent.id)
+        : undefined,
+    };
+    return transactionProcessSessionResponse;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
 };
