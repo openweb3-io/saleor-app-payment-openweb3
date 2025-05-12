@@ -2,7 +2,7 @@ import { SaleorApp } from "@saleor/app-sdk/saleor-app";
 import { FileAPL, UpstashAPL, SaleorCloudAPL } from "@saleor/app-sdk/APL";
 import { invariant } from "./lib/invariant";
 import { env } from "./lib/env.mjs";
-import { isTest } from "./lib/isEnv";
+// import { isTest } from "./lib/isEnv";
 
 /**
  * By default auth data are stored in the `.auth-data.json` (FileAPL).

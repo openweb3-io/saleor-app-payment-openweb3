@@ -204,7 +204,7 @@ export const updateOpenweb3PaymentIntent = async ({
   } catch {
     const amount = await getSaleorAmountFromOpenweb3Amount(
       {
-        amount: paymentIntentCreateParams.amount!,
+        amount: paymentIntentUpdateParams.amount!,
         currency: "USDT",
       },
       {
