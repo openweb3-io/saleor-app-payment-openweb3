@@ -226,14 +226,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 设置 cookie
     const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
+
+    // 设置 openweb3-walletpay cookie
     res.setHeader(
       "Set-Cookie",
-      [
-        `openweb3-walletpay=${token}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`,
-        `${process.env.SALEOR_API_URL}+saleor_auth_access_token=${tokenCreate.token}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`,
-        `${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token=${tokenCreate.refreshToken}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`,
-        `${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state=signedIn; Path=/; Secure; HttpOnly; SameSite=Lax; Expires=${expires}`,
-      ].join(", "),
+      `openweb3-walletpay=${token}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`,
+    );
+
+    // 设置 saleor_auth_access_token cookie
+    res.setHeader(
+      "Set-Cookie",
+      `${process.env.SALEOR_API_URL}+saleor_auth_access_token=${tokenCreate.token}; Path=/; Secure; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Expires=${expires}`,
+    );
+
+    // 设置 saleor_auth_module_refresh_token cookie
+    res.setHeader(
+      "Set-Cookie",
+      `${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token=${tokenCreate.refreshToken}; Path=/; Secure; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Expires=${expires}`,
+    );
+
+    // 设置 saleor_auth_module_auth_state cookie
+    res.setHeader(
+      "Set-Cookie",
+      `${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state=signedIn; Path=/; Secure; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Expires=${expires}`,
     );
 
     return res.status(200).json({
