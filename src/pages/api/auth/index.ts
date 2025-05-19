@@ -8,9 +8,10 @@ const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
 
 // 设置 CORS 头信息
 const setCorsHeaders = (res: NextApiResponse) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", process.env.SALEOR_HEADER_ORIGIN! || "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, platform");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 };
 
 // Saleor GraphQL 创建用户 mutation
