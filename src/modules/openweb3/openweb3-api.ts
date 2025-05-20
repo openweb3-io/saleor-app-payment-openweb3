@@ -98,6 +98,10 @@ export const openweb3PaymentIntentToTransactionResult = (
           null;
   invariant(prefix, `Unsupported transactionFlowStrategy: ${transactionFlowStrategy}`);
 
+  const logger = createLogger({}, { msgPrefix: "[openweb3PaymentIntentToTransactionResult] " });
+
+  logger.info({ openweb3Result });
+
   switch (openweb3Result) {
     case "PENDING":
       return `${prefix}_REQUEST`;
