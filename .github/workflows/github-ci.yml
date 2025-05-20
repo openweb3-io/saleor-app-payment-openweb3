@@ -1,6 +1,6 @@
 name:  CI/CD
 
-on: # Trigger condition
+on:
   push:
     branches: [ main, dev,openweb3 ]
     paths:
