@@ -156,18 +156,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Set cookie
     const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
 
-    res.setHeader("Set-Cookie", [
-      `openweb3-walletpay=${token}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`,
-      `${process.env.SALEOR_API_URL}+saleor_auth_access_token=${tokenCreate.token}; Path=/; Secure; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Expires=${expires}`,
-      `${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token=${tokenCreate.refreshToken}; Path=/; Secure; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Expires=${expires}`,
-      `${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state=signedIn; Path=/; Secure; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Expires=${expires}`,
-    ]);
+    const formatCookie = (name: string, value: string) =>
+      `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`;
+
+    type CookieEntry = [string, string];
+
+    const cookies: CookieEntry[] = [
+      ["openweb3-walletpay", token],
+      [`${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state`, "signedIn"],
+      [`${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token`, tokenCreate.refreshToken],
+      [`${process.env.SALEOR_API_URL}+saleor_auth_access_token`, tokenCreate.token],
+    ];
+
+    res.setHeader(
+      "Set-Cookie",
+      cookies.map(([name, value]) => formatCookie(name, value)),
+    );
 
     return res.status(200).json({
       code: 0,
       message: "success",
       data: {
-        ...parsedData,
+        detail: parsedData,
+        localStorage: cookies,
       },
     });
   } catch (error) {
