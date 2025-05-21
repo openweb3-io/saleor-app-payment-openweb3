@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/github-ci.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev,openweb3 ]
 
 jobs:
   build:
