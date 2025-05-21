@@ -58,7 +58,6 @@ export const TransactionProcessSessionWebhookHandler = async (
     });
 
     const openweb3PaymentIntent = await updateOpenweb3PaymentIntent({
-      intentId: event.transaction.pspReference,
       paymentIntentUpdateParams,
       secretKey: openweb3Config.secretKey,
       publishableKey: openweb3Config.publishableKey,

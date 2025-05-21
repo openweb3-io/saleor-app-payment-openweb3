@@ -64,10 +64,6 @@ export const transactionSessionProcessEventToOpenweb3Update = (
 
   return {
     ...data,
-    // amount: getOpenweb3AmountFromSaleorMoney({
-    //   amount: event.sourceObject.total.gross.amount,
-    //   currency: event.sourceObject.total.gross.currency,
-    // }),
     amount: event.sourceObject.total.gross.amount,
     currency: event.sourceObject.total.gross.currency,
     capture_method:
@@ -104,22 +100,18 @@ export const openweb3PaymentIntentToTransactionResult = (
 
   switch (openweb3Result) {
     case "PENDING":
-      return `${prefix}_REQUEST`;
+      return `${prefix}_ACTION_REQUIRED`;
     case "requires_payment_method":
     case "EXPIRED":
       return `${prefix}_FAILURE`;
-    case "requires_confirmation":
-      return `${prefix}_ACTION_REQUIRED`;
     case "FAILED":
       return `${prefix}_FAILURE`;
     case "PAID":
       return `${prefix}_SUCCESS`;
     case "COMPLETED":
       return `${prefix}_SUCCESS`;
-    case "requires_capture":
-      return "AUTHORIZATION_SUCCESS";
     default:
-      return `${prefix}_REQUEST`;
+      return `${prefix}_ACTION_REQUIRED`;
   }
 };
 
@@ -188,45 +180,22 @@ export const initializeOpenweb3PaymentIntent = async ({
 };
 
 export const updateOpenweb3PaymentIntent = async ({
-  intentId,
   paymentIntentUpdateParams,
   secretKey,
   publishableKey,
 }: {
-  intentId: string;
   paymentIntentUpdateParams: Partial<PaymentIntentCommonParams>;
   secretKey: string;
   publishableKey: string;
 }): Promise<Order> => {
-  const metadata = paymentIntentUpdateParams.metadata;
-  const uid = `${metadata?.userId}-${metadata?.transactionId}`;
+  const uid = paymentIntentUpdateParams.userId;
   const openweb3 = getOpenweb3ApiClient(secretKey, publishableKey);
 
   try {
-    const res = await openweb3.orders.retrieve(uid);
+    const res = await openweb3.orders.retrieve(uid!);
     return res;
   } catch {
-    const amount = await getSaleorAmountFromOpenweb3Amount(
-      {
-        amount: paymentIntentUpdateParams.amount!,
-        currency: "USDT",
-      },
-      {
-        secretKey,
-        publishableKey,
-      },
-    );
-
-    const res = await openweb3.orders.create({
-      amount: `${amount}`,
-      currency: "USDT",
-      uid,
-      metadata: metadata as {
-        [key: string]: string;
-      },
-    });
-
-    return res;
+    throw new Error("Payment intent not found");
   }
 };
 

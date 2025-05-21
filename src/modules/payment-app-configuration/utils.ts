@@ -31,7 +31,7 @@ export function safeParse(objects: any) {
   try {
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error("解析 JSON 时出错:", error);
+    console.error("Error parsing JSON:", error);
     return null;
   }
 }

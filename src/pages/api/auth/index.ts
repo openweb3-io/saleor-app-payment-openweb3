@@ -1,12 +1,17 @@
 import { validate, parse } from "@telegram-apps/init-data-node";
 import { type NextApiRequest, type NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
-import { createClient } from "@/lib/create-graphq-client";
+import { createAdminSaleorClient } from "@/modules/saleor";
+import {
+  ACCOUNT_REGISTER_MUTATION,
+  USER_QUERY,
+  TOKEN_CREATE_MUTATION,
+} from "@/modules/saleor/graphql";
 
-// 定义白名单数组
+// Define whitelist array
 const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
 
-// 设置 CORS 头信息
+// Set CORS headers
 const setCorsHeaders = (res: NextApiResponse) => {
   res.setHeader("Access-Control-Allow-Origin", process.env.SALEOR_HEADER_ORIGIN! || "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -14,71 +19,11 @@ const setCorsHeaders = (res: NextApiResponse) => {
   res.setHeader("Access-Control-Allow-Credentials", "true");
 };
 
-// Saleor GraphQL 创建用户 mutation
-const ACCOUNT_REGISTER_MUTATION = `
-  mutation AccountRegisterInput($input: AccountRegisterInput!) {
-    accountRegister(input: $input) {
-      requiresConfirmation
-      errors {
-        field
-        message
-        addressType
-      }
-      user {
-        id
-        isActive
-        isConfirmed
-      }
-    }
-  }
-`;
-
-// Saleor GraphQL 查询用户 mutation
-const USER_QUERY = `
-  query User($email: String) {
-    user(email: $email) {
-      id
-      email
-    }
-  }
-`;
-
-// Saleor GraphQL 获取用户 token mutation
-const TOKEN_CREATE_MUTATION = `
-  mutation TokenCreate($email: String!, $password: String!) {
-    tokenCreate(email: $email, password: $password) {
-      token
-      refreshToken
-      csrfToken
-      user {
-        id
-        email
-      }
-      errors {
-        field
-        message
-        code
-      }
-    }
-  }
-`;
-
-const SET_PASSWORD_MUTATION = `
-  mutation SetCustomerPassword($id: ID!, $password: String!) {
-    customerSetPassword(id: $id, password: $password) {
-      errors {
-        field
-        message
-      }
-    }
-  }
-`;
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // 设置 CORS 头信息
+  // Set CORS headers
   setCorsHeaders(res);
 
-  // 处理 OPTIONS 请求
+  // Handle OPTIONS request
   if (req.method === "OPTIONS") {
     setCorsHeaders(res);
     return res.status(200).end();
@@ -90,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 检查 platform 是否在白名单中
+    // Check if platform is in whitelist
     const platform = req.headers["platform"] as string;
     if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
       return res.status(403).json({ error: "Invalid platform" });
@@ -102,35 +47,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Missing initDataRaw parameter" });
     }
 
-    // 验证 Telegram 参数
+    // Verify Telegram parameters
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
 
-    // 解析数据
+    // Parse data
     const parsedData = parse(initDataRaw);
     const { user, startParam } = parsedData;
 
-    // 创建 Saleor GraphQL 客户端
-    const saleorClient = createClient(process.env.SALEOR_API_URL!, async () =>
-      Promise.resolve({ token: "" }),
-    );
-
-    const adminSaleorClient = createClient(process.env.SALEOR_API_URL!, async () => {
-      // 使用管理员凭证获取新 token
-      const { data } = await saleorClient
-        .mutation(TOKEN_CREATE_MUTATION, {
-          email: process.env.SALEOR_ADMIN_EMAIL,
-          password: process.env.SALEOR_ADMIN_PASSWORD,
-        })
-        .toPromise();
-      return Promise.resolve({ token: data?.tokenCreate.token });
-    });
+    // Create Saleor GraphQL client
+    const adminSaleorClient = await createAdminSaleorClient();
 
     const email = `${user?.id}@openweb3.com`;
 
     const password = `${process.env.SALEOR_USER_PASSWORD}${user?.id}`;
 
-    // 检查用户是否已存在
+    // Check if user exists
     const { data: userData } = await adminSaleorClient
       .query(USER_QUERY, {
         email: email,
@@ -141,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log("saleorUser=", saleorUser);
 
-    // 如果用户不存在，创建新用户
+    // If user doesn't exist, create new user
     if (!saleorUser) {
       console.log("createData start");
 
@@ -186,17 +118,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       saleorUser = accountRegister.user;
     }
 
-    console.log("TOKEN_CREATE_MUTATION start");
-
-    // 获取用户 token
+    // Get user token
     const { data: tokenData, error: tokenError } = await adminSaleorClient
       .mutation(TOKEN_CREATE_MUTATION, {
         email: email,
         password: password,
       })
       .toPromise();
-
-    console.log("TOKEN_CREATE_MUTATION end");
 
     if (tokenError) {
       console.error("Create token error:", tokenError);
@@ -209,7 +137,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Failed to create token" });
     }
 
-    // 创建 JWT token
+    // Create JWT token
     const token = jwt.sign(
       {
         id: user?.id.toString(),
@@ -225,7 +153,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log("token=", tokenCreate);
 
-    // 设置 cookie
+    // Set cookie
     const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
 
     res.setHeader("Set-Cookie", [

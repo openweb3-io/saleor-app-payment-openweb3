@@ -39,6 +39,7 @@ export const TransactionInitializeSessionWebhookHandler = async (
     },
     "Received event",
   );
+
   try {
     const app = event.recipient;
     invariant(app, "Missing event.recipient!");

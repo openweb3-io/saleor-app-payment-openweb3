@@ -24,6 +24,13 @@ export default async function Openweb3WebhookHandler(
     return;
   }
 
+  if (req.headers["content-type"] !== "application/json") {
+    return res.status(400).json({
+      code: 1,
+      message: "Invalid content type",
+    });
+  }
+
   const logger = createLogger({}, { msgPrefix: "[Openweb3WebhookHandler] " });
   logger.info("Handler was called");
 
@@ -53,6 +60,9 @@ export default async function Openweb3WebhookHandler(
   }
 
   logger.info("Openweb3WebhookHandler finished OK");
-  res.status(204).end();
+  res.status(200).json({
+    code: 0,
+    message: "success",
+  });
   return;
 }

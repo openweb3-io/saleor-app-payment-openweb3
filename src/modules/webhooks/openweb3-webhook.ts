@@ -1,9 +1,7 @@
-import crypto from "crypto";
 import { type NextApiRequest } from "next";
-import { getPaymentAppConfigurator } from "../payment-app-configuration/payment-app-configuration-factory";
+import { WebhookClient } from "@openweb3-io/wallet-pay";
+import { processTransaction } from "../saleor/transaction";
 import { MissingSignatureError } from "./openweb3-webhook.errors";
-import { createClient } from "@/lib/create-graphq-client";
-import { getAuthDataForRequest } from "@/backend-lib/api-route-utils";
 import { createLogger } from "@/lib/logger";
 import { __do } from "@/lib/utils";
 
@@ -84,21 +82,26 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
 
   const logger = createLogger({}, { msgPrefix: "[openweb3WebhookHandler] " });
 
-  // 检查X-Signature头
+  // Get raw request body (for debugging non-JSON data)
+  const body = await new Promise((resolve) => {
+    let data = "";
+    req.on("data", (chunk) => (data += chunk));
+    req.on("end", () => resolve(data));
+  });
+
+  console.log("body=", body);
+
+  // Check X-Signature header
   const signature = req.headers["x-signature"];
+  console.log("signature=", signature);
   if (!signature) {
     throw new MissingSignatureError("Missing X-Signature header");
   }
 
-  // 获取原始请求体
-  const body = JSON.stringify(req.body);
-
-  // 验证签名
   const publicKey = process.env.WALLET_PAY_WEBHOOK_PUBLIC_KEY;
-  const verifier = crypto.createVerify("RSA-SHA256");
-  verifier.update(body);
 
-  const isValid = verifier.verify(publicKey!, signature as string, "base64");
+  const webhookClient = new WebhookClient(publicKey!);
+  const isValid = await webhookClient.verify(body as string, signature as string);
 
   if (!isValid) {
     throw new Error("Invalid signature");
@@ -106,10 +109,10 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
 
   logger.info("Signature verification successful");
 
-  // 解析请求体
-  const event = JSON.parse(body) as OrderEvent;
+  // Parse request body
+  const event = JSON.parse(body as string) as OrderEvent;
 
-  // 根据事件类型处理
+  // Handle events based on type
   switch (event.type) {
     case OrderEventNameType.ORDER_PAID:
       logger.info("Processing ORDER_PAID event", {
@@ -117,7 +120,38 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
         amount: event.payload.amount,
         walletId: event.payload.wallet_id,
       });
-      // TODO: 处理支付成功事件
+
+      const userId = event.payload.uid;
+      const [, transactionId] = userId.split("-");
+
+      console.log("Processing ORDER_PAID event", event.payload.uid);
+
+      try {
+        const result = await processTransaction(transactionId, userId);
+
+        if (result.orderId) {
+          logger.info("Order processed successfully", {
+            orderId: String(result.orderId),
+            checkoutId: String(result.checkoutId),
+            transactionId: String(transactionId),
+            status: "success",
+          });
+        } else if (result.errors?.length) {
+          logger.error("Order processing failed", {
+            checkoutId: String(result.checkoutId),
+            transactionId: String(transactionId),
+            errors: result.errors.map((e) => `${e.field}: ${e.message}`).join(", "),
+            status: "error",
+          });
+        }
+      } catch (error) {
+        logger.error("Error occurred during order processing", {
+          transactionId: String(transactionId),
+          error: error instanceof Error ? error.message : "Unknown error",
+          status: "error",
+        });
+      }
+
       break;
 
     case OrderEventNameType.ORDER_EXPIRED:
@@ -125,7 +159,7 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
         orderId: event.payload.id,
         amount: event.payload.amount,
       });
-      // TODO: 处理订单过期事件
+      // TODO: Handle order expired event
       break;
 
     case OrderEventNameType.ORDER_FAILED:
@@ -134,7 +168,7 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
         amount: event.payload.amount,
         failedMessage: event.payload.failed_message,
       });
-      // TODO: 处理支付失败事件
+      // TODO: Handle payment failed event
       break;
 
     default:
