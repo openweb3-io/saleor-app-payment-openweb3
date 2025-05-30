@@ -100,7 +100,7 @@ export const openweb3PaymentIntentToTransactionResult = (
 
   switch (openweb3Result) {
     case "PENDING":
-      return `${prefix}_ACTION_REQUIRED`;
+      return `${prefix}_REQUEST`;
     case "requires_payment_method":
     case "EXPIRED":
       return `${prefix}_FAILURE`;
@@ -111,7 +111,7 @@ export const openweb3PaymentIntentToTransactionResult = (
     case "COMPLETED":
       return `${prefix}_SUCCESS`;
     default:
-      return `${prefix}_ACTION_REQUIRED`;
+      return `${prefix}_REQUEST`;
   }
 };
 
