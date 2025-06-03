@@ -53,7 +53,7 @@ export const TransactionInitializeSessionWebhookHandler = async (
     );
 
     logger.info({}, "Processing Transaction Initialize request");
-
+    console.log("event=", event);
     const paymentIntentCreateParams = transactionSessionInitializeEventToOepnweb3Create(event);
 
     logger.debug({

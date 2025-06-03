@@ -17,7 +17,7 @@ interface ProcessTransactionResult {
 
 export async function processTransaction(
   transactionId: string,
-  userId: string,
+  uid: string,
 ): Promise<ProcessTransactionResult> {
   try {
     const adminClient = await createAdminSaleorClient();
@@ -34,7 +34,7 @@ export async function processTransaction(
       .mutation(TRANSACTION_PROCESS_MUTATION, {
         id: transactionId,
         data: {
-          userId,
+          uid,
         },
       })
       .toPromise();
@@ -42,13 +42,21 @@ export async function processTransaction(
     const checkoutId = transactionResult?.data?.transaction?.checkout?.id;
     const transactionStatus = processResult?.data?.transactionProcess?.transactionEvent.type;
 
-    // If transaction is successful and has checkout ID, complete order conversion
-    if (transactionStatus === "SUCCESS" && checkoutId) {
+    console.log("Processed transactionResult", JSON.stringify(transactionResult?.data, null, 2));
+
+    console.log("Processed processResult", JSON.stringify(processResult?.data, null, 2));
+
+    if (transactionStatus === "CHARGE_SUCCESS" && checkoutId) {
       const checkoutCompleteResult = await adminClient
         .mutation(CHECKOUT_COMPLETE_MUTATION, {
           id: checkoutId,
         })
         .toPromise();
+
+      console.log(
+        "Processed checkoutCompleteResult",
+        JSON.stringify(checkoutCompleteResult?.data, null, 2),
+      );
 
       return {
         checkoutId,

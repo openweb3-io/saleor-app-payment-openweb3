@@ -82,6 +82,10 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
 
   const logger = createLogger({}, { msgPrefix: "[openweb3WebhookHandler] " });
 
+  // Check X-Signature header
+  const signature = req.headers["x-signature"];
+  console.log("signature=", signature);
+
   // Get raw request body (for debugging non-JSON data)
   const body = await new Promise((resolve) => {
     let data = "";
@@ -91,9 +95,6 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
 
   console.log("body=", body);
 
-  // Check X-Signature header
-  const signature = req.headers["x-signature"];
-  console.log("signature=", signature);
   if (!signature) {
     throw new MissingSignatureError("Missing X-Signature header");
   }
@@ -121,13 +122,13 @@ export const openweb3WebhookHandler = async (req: Openweb3WebhookRequest) => {
         walletId: event.payload.wallet_id,
       });
 
-      const userId = event.payload.uid;
-      const [, transactionId] = userId.split("-");
+      const uid = event.payload.uid;
+      const [, transactionId] = uid.split("-");
 
-      console.log("Processing ORDER_PAID event", event.payload.uid);
+      console.log("Processing ORDER_PAID event", uid);
 
       try {
-        const result = await processTransaction(transactionId, userId);
+        const result = await processTransaction(transactionId, uid);
 
         if (result.orderId) {
           logger.info("Order processed successfully", {

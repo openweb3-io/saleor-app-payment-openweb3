@@ -82,6 +82,7 @@ export const openweb3PaymentIntentToTransactionResult = (
   transactionFlowStrategy: TransactionFlowStrategyEnum,
   openweb3PaymentIntent: Order,
 ): TransactionInitializeSessionResponse["result"] => {
+  console.log("openweb3PaymentIntent=", openweb3PaymentIntent);
   // "PENDING" | "PAID" | "EXPIRED" | "FAILED" | "COMPLETED"
   const openweb3Result = openweb3PaymentIntent.status;
 
@@ -100,8 +101,7 @@ export const openweb3PaymentIntentToTransactionResult = (
 
   switch (openweb3Result) {
     case "PENDING":
-      return `${prefix}_REQUEST`;
-    case "requires_payment_method":
+      return `${prefix}_ACTION_REQUIRED`;
     case "EXPIRED":
       return `${prefix}_FAILURE`;
     case "FAILED":
@@ -111,7 +111,7 @@ export const openweb3PaymentIntentToTransactionResult = (
     case "COMPLETED":
       return `${prefix}_SUCCESS`;
     default:
-      return `${prefix}_REQUEST`;
+      return `${prefix}_ACTION_REQUIRED`;
   }
 };
 
@@ -121,6 +121,7 @@ export enum PLATFORM {
 }
 
 export interface PaymentIntentCommonParams {
+  uid?: string;
   metadata: {
     transactionId: string;
     channelId: string;
@@ -131,7 +132,6 @@ export interface PaymentIntentCommonParams {
   };
   amount: number;
   currency: string;
-  userId: string;
   checkoutId: string;
   transactionId: string;
   channelId: string;
@@ -188,7 +188,7 @@ export const updateOpenweb3PaymentIntent = async ({
   secretKey: string;
   publishableKey: string;
 }): Promise<Order> => {
-  const uid = paymentIntentUpdateParams.userId;
+  const uid = paymentIntentUpdateParams.uid;
   const openweb3 = getOpenweb3ApiClient(secretKey, publishableKey);
 
   try {
@@ -200,8 +200,6 @@ export const updateOpenweb3PaymentIntent = async ({
 };
 
 export async function processOpenweb3PaymentIntentRefundRequest({
-  paymentIntentId,
-  openweb3Amount,
   secretKey,
   publishableKey,
 }: {
@@ -215,7 +213,6 @@ export async function processOpenweb3PaymentIntentRefundRequest({
 }
 
 export async function processOpenweb3PaymentIntentCancelRequest({
-  paymentIntentId,
   secretKey,
   publishableKey,
 }: {
@@ -228,8 +225,6 @@ export async function processOpenweb3PaymentIntentCancelRequest({
 }
 
 export async function processOpenweb3PaymentIntentCaptureRequest({
-  paymentIntentId,
-  openweb3Amount,
   secretKey,
   publishableKey,
 }: {

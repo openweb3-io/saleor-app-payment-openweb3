@@ -57,9 +57,6 @@ export const TRANSACTION_QUERY = `
       order {
         id
       }
-      status
-      type
-      isSuccess
       chargedAmount {
         amount
         currency
