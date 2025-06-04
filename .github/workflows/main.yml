@@ -1,35 +1,90 @@
-name:  CI/CD
-
+name: QA
 on:
-  push:
-    branches: [ main, dev,openweb3 ]
-    paths:
-      - '.github/workflows/github-ci.yml'
   pull_request:
-    branches: [ main, dev,openweb3 ]
+  merge_group:
+  push:
+    branches:
+      - canary
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Build Docker image
-        run: |
-          echo "build mini-hub"
-          docker build -f Dockerfile -t saleor/saleor-app-payment-openweb3:latest .
-          
-      - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.DOCKER_REGISTRY }}
-        
-      - name: Push to ECR
-        run: |
-          echo "push image to ecr"
-          docker tag saleor/saleor-app-payment-openweb3:latest ${{ secrets.DOCKER_REGISTRY }}/saleor/saleor-app-payment-openweb3:latest 
-          docker push ${{ secrets.DOCKER_REGISTRY }}/saleor/saleor-app-payment-openweb3:latest
-          
-      - name: Deploy to ECS
-        run: |
-          echo "deploy"
-          aws ecs update-service --region ${{ secrets.AWS_DEFAULT_REGION }} --cluster ${{ secrets.ECS_CLUSTER }} --service ${{ secrets.ECS_SERVICE }}  --task-definition ${{ secrets.ECS_TASK_DEFINITION }} --force-new-deployment
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "pnpm"
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.json') }}-
+
+      - name: Install dependencies
+        run: pnpm --version && pnpm install --frozen-lockfile
+
+      - name: Check prettier
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: pnpm prettier --check .
+
+      - name: Generate
+        run: pnpm generate
+
+      - name: Load secret
+        uses: 1password/load-secrets-action@v1
+        with:
+          # Export loaded secrets as environment variables
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          TEST_SALEOR_APP_TOKEN: op://Shop-ex/saleor-app-payment-stripe_TEST_ENVS/TEST_SALEOR_APP_TOKEN
+          TEST_SALEOR_APP_ID: op://Shop-ex/saleor-app-payment-stripe_TEST_ENVS/TEST_SALEOR_APP_ID
+          TEST_PAYMENT_APP_SECRET_KEY: op://Shop-ex/saleor-app-payment-stripe_TEST_ENVS/TEST_PAYMENT_APP_SECRET_KEY
+          TEST_PAYMENT_APP_PUBLISHABLE_KEY: op://Shop-ex/saleor-app-payment-stripe_TEST_ENVS/TEST_PAYMENT_APP_PUBLISHABLE_KEY
+          TEST_PAYMENT_APP_WEBHOOK_SECRET: op://Shop-ex/saleor-app-payment-stripe_TEST_ENVS/TEST_PAYMENT_APP_WEBHOOK_SECRET
+          TEST_PAYMENT_APP_WEBHOOK_ID: op://Shop-ex/saleor-app-payment-stripe_TEST_ENVS/TEST_PAYMENT_APP_WEBHOOK_ID
+
+      - name: Test
+        run: pnpm test:ci
+
+      - name: Dependency cruiser
+        if: ${{ github.event_name != 'push' && github.actor != 'dependabot[bot]' }}
+        run: pnpm exec dependency-cruiser src
+
+      - name: Download coverage report from canary
+        if: ${{ github.event_name != 'push' && github.actor != 'dependabot[bot]' }}
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow_conclusion: success
+          branch: canary
+          event: push
+          name: coverage-artifacts
+          path: coverage-main/
+
+      - name: Coverage report
+        if: ${{ github.event_name != 'push' && github.actor != 'dependabot[bot]' }}
+        uses: ArtiomTr/jest-coverage-report-action@v2.2.4
+        with:
+          skip-step: all
+          coverage-file: coverage/report.json
+          base-coverage-file: coverage-main/report.json
+
+      - name: Upload coverage report
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/canary' && github.actor != 'dependabot[bot]' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-artifacts
+          path: coverage/
