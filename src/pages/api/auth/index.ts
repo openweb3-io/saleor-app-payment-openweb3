@@ -2,10 +2,17 @@ import { validate, parse } from "@telegram-apps/init-data-node";
 import { type NextApiRequest, type NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
 import { createAdminSaleorClient } from "@/modules/saleor";
-import { TOKEN_CREATE_MUTATION, CUSTOMER_QUERY } from "@/modules/saleor/graphql";
+import {
+  TOKEN_CREATE_MUTATION,
+  CUSTOMER_QUERY,
+  TOKEN_VERIFY_MUTATION,
+} from "@/modules/saleor/graphql";
 
 // Define whitelist array
 const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
+
+const ACCESS_TOKEN = `${process.env.SALEOR_API_URL}+saleor_auth_access_token`;
+const REFRESH_TOKEN = `${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token`;
 
 // Set CORS headers
 const setCorsHeaders = (res: NextApiResponse) => {
@@ -30,21 +37,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // 注册页面地址
-  const REGISTER_URL = `https://${process.env.SALEOR_SESSION_DOMAIN}/register`;
-
-  // 检查请求来源
-  const origin = req.headers.origin;
-  if (origin === REGISTER_URL) {
-    return res.status(200).json({
-      code: 0,
-      message: "Success from register page",
-      data: {
-        isRegisterPage: true,
-      },
-    });
-  }
-
   try {
     // Check if platform is in whitelist
     const platform = req.headers["platform"] as string;
@@ -52,25 +44,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Invalid platform" });
     }
 
-    const { initDataRaw } = req.body;
+    const initDataRaw = req.body.initDataRaw;
 
     if (!initDataRaw) {
       return res.status(400).json({ error: "Missing initDataRaw parameter" });
     }
-
     // Verify Telegram parameters
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
-
     // Parse data
     const parsedData = parse(initDataRaw);
-    const { user, startParam } = parsedData;
+
+    // 检查是否存在 refresh token
+    const refreshToken = req.cookies[REFRESH_TOKEN];
+    const accessToken = req.cookies[ACCESS_TOKEN];
+
+    if (refreshToken && accessToken) {
+      // 创建 Saleor GraphQL client
+      const adminSaleorClient = await createAdminSaleorClient();
+
+      // 验证 refresh token
+      const { data: verifyData, error: verifyError } = await adminSaleorClient
+        .mutation(TOKEN_VERIFY_MUTATION, {
+          token: refreshToken,
+        })
+        .toPromise();
+
+      console.log("verifyData=", verifyData);
+
+      if (!verifyError && verifyData?.tokenVerify?.payload) {
+        // token 有效，返回成功信息
+        return res.status(200).json({
+          code: 0,
+          message: "success",
+          data: {
+            isValid: true,
+          },
+        });
+      }
+    }
 
     // Create Saleor GraphQL client
     const adminSaleorClient = await createAdminSaleorClient();
 
-    const password = `${process.env.SALEOR_USER_PASSWORD}${user?.id}`;
-
+    // Checkout user
+    const { user, startParam } = parsedData;
     const { data: customerData } = await adminSaleorClient
       .query(CUSTOMER_QUERY, {
         first: 20,
@@ -85,7 +103,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         PERMISSION_MANAGE_ORDERS: true,
       })
       .toPromise();
-
     const saleorUser = customerData.customers.edges[0]?.node;
 
     // If user doesn't exist, create new user
@@ -99,6 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const password = `${process.env.SALEOR_USER_PASSWORD}${user?.id}`;
     // Get user token
     const { data: tokenData, error: tokenError } = await adminSaleorClient
       .mutation(TOKEN_CREATE_MUTATION, {
@@ -145,8 +163,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cookies: CookieEntry[] = [
       ["openweb3-walletpay", token],
       [`${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state`, "signedIn"],
-      [`${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token`, tokenCreate.refreshToken],
-      [`${process.env.SALEOR_API_URL}+saleor_auth_access_token`, tokenCreate.token],
+      [ACCESS_TOKEN, tokenCreate.token],
+      [REFRESH_TOKEN, tokenCreate.refreshToken],
     ];
 
     res.setHeader(

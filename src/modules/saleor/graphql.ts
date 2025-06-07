@@ -156,3 +156,13 @@ fragment Customer on User {
   __typename
 }
 `;
+
+export const TOKEN_VERIFY_MUTATION = `
+  mutation TokenVerify($token: String!){
+    tokenVerify(
+      token: $token
+    ) {
+      payload
+    }
+  }
+`;
