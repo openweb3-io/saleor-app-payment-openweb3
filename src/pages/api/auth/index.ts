@@ -2,18 +2,14 @@ import { validate, parse } from "@telegram-apps/init-data-node";
 import { type NextApiRequest, type NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
 import { createAdminSaleorClient } from "@/modules/saleor";
-import {
-  ACCOUNT_REGISTER_MUTATION,
-  USER_QUERY,
-  TOKEN_CREATE_MUTATION,
-} from "@/modules/saleor/graphql";
+import { TOKEN_CREATE_MUTATION, CUSTOMER_QUERY } from "@/modules/saleor/graphql";
 
 // Define whitelist array
 const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
 
 // Set CORS headers
 const setCorsHeaders = (res: NextApiResponse) => {
-  res.setHeader("Access-Control-Allow-Origin", process.env.SALEOR_HEADER_ORIGIN! || "*");
+  res.setHeader("Access-Control-Allow-Origin", `https://${process.env.SALEOR_SESSION_DOMAIN}`);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, platform");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -28,10 +24,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     setCorsHeaders(res);
     return res.status(200).end();
   }
-
+  console.log("req.method=", req.method);
   if (req.method !== "POST") {
     setCorsHeaders(res);
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // 注册页面地址
+  const REGISTER_URL = `https://${process.env.SALEOR_SESSION_DOMAIN}/register`;
+
+  // 检查请求来源
+  const origin = req.headers.origin;
+  if (origin === REGISTER_URL) {
+    return res.status(200).json({
+      code: 0,
+      message: "Success from register page",
+      data: {
+        isRegisterPage: true,
+      },
+    });
   }
 
   try {
@@ -58,70 +69,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Create Saleor GraphQL client
     const adminSaleorClient = await createAdminSaleorClient();
 
-    const email = `${user?.id}@openweb3.com`;
-
     const password = `${process.env.SALEOR_USER_PASSWORD}${user?.id}`;
 
-    // Check if user exists
-    const { data: userData } = await adminSaleorClient
-      .query(USER_QUERY, {
-        email: email,
+    const { data: customerData } = await adminSaleorClient
+      .query(CUSTOMER_QUERY, {
+        first: 20,
+        filter: {
+          metadata: [
+            {
+              key: "userId",
+              value: `${user?.id}`,
+            },
+          ],
+        },
+        PERMISSION_MANAGE_ORDERS: true,
       })
       .toPromise();
 
-    let saleorUser = userData?.user;
-
-    console.log("saleorUser=", saleorUser);
+    const saleorUser = customerData.customers.edges[0]?.node;
 
     // If user doesn't exist, create new user
     if (!saleorUser) {
-      console.log("createData start");
-
-      const { data: createData, error: createError } = await adminSaleorClient
-        .mutation(ACCOUNT_REGISTER_MUTATION, {
-          input: {
-            email: email,
-            firstName: user?.firstName || "",
-            lastName: user?.lastName || "",
-            password: password,
-            metadata: [
-              {
-                key: "userId",
-                value: user?.id.toString(),
-              },
-              {
-                key: "userName",
-                value: user?.username || "",
-              },
-              {
-                key: "platform",
-                value: platform,
-              },
-            ],
-          },
-        })
-        .toPromise();
-
-      console.log("createData end", createData);
-
-      if (createError) {
-        console.error("Create user error:", createError);
-        return res.status(500).json({ error: "Failed to create user" });
-      }
-
-      const accountRegister = createData?.accountRegister;
-      if (!accountRegister || accountRegister.errors?.length) {
-        console.error("Create user error:", accountRegister?.errors);
-        return res.status(500).json({ error: "Failed to create user" });
-      }
-
-      saleorUser = accountRegister.user;
+      return res.status(200).json({
+        code: 301,
+        message: "User not found, redirect to register page",
+        data: {
+          isRedirect: true,
+        },
+      });
     }
 
     // Get user token
     const { data: tokenData, error: tokenError } = await adminSaleorClient
       .mutation(TOKEN_CREATE_MUTATION, {
-        email: email,
+        email: saleorUser?.email,
         password: password,
       })
       .toPromise();

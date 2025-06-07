@@ -114,3 +114,45 @@ export const CHECKOUT_COMPLETE_MUTATION = `
     }
   }
 `;
+
+// 查询用户
+export const CUSTOMER_QUERY = `
+  query ListCustomers($after: String, $before: String, $first: Int, $last: Int, $filter: CustomerFilterInput, $sort: UserSortingInput, $PERMISSION_MANAGE_ORDERS: Boolean!) {
+  customers(
+    after: $after
+    before: $before
+    first: $first
+    last: $last
+    filter: $filter
+    sortBy: $sort
+  ) {
+    edges {
+      node {
+        ...Customer
+        orders @include(if: $PERMISSION_MANAGE_ORDERS) {
+          totalCount
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      __typename
+    }
+    __typename
+  }
+}
+
+fragment Customer on User {
+  id
+  email
+  firstName
+  lastName
+  __typename
+}
+`;
