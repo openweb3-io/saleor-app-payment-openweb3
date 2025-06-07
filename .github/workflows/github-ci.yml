@@ -2,11 +2,11 @@ name:  CI/CD
 
 on:
   push:
-    branches: [ main, dev,openweb3 ]
+    branches: [ main,dev,openweb3 ]
     paths:
       - '.github/workflows/github-ci.yml'
   pull_request:
-    branches: [ main, dev,openweb3 ]
+    branches: [ main,dev,openweb3 ]
 
 jobs:
   build:
