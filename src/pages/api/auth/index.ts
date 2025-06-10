@@ -181,7 +181,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (error) {
-    console.log("----- process.env start-----");
+    console.log("----- process.env start------");
+    console.log("debug print")
     console.log("DEJAY_MINIAPP_URL: ", process.env.DEJAY_MINIAPP_URL);
     console.log("TELEGRAM_MINIAPP_URL: ", process.env.TELEGRAM_MINIAPP_URL);
     console.log("TELEGRAM_BOT_TOKEN: ", process.env.TELEGRAM_BOT_TOKEN);
