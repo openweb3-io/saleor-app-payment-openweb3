@@ -117,7 +117,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: "success",
     });
   } catch (error) {
-    console.error("Authentication error:", error);
-    return res.status(500).json({ error: "Authentication failed" });
+    console.log("----- process.env start-----");
+    console.log("DEJAY_MINIAPP_URL: ", process.env.DEJAY_MINIAPP_URL);
+    console.log("TELEGRAM_MINIAPP_URL: ", process.env.TELEGRAM_MINIAPP_URL);
+    console.log("TELEGRAM_BOT_TOKEN: ", process.env.TELEGRAM_BOT_TOKEN);
+    console.log("SALEOR_API_URL: ", process.env.SALEOR_API_URL);
+    console.log("SALEOR_ADMIN_EMAIL: ", process.env.SALEOR_ADMIN_EMAIL);
+    console.log("SALEOR_ADMIN_PASSWORD: ", process.env.SALEOR_ADMIN_PASSWORD);
+    console.log("SALEOR_SESSION_DOMAIN: ", process.env.SALEOR_SESSION_DOMAIN);
+    console.log("SALEOR_USER_PASSWORD: ", process.env.SALEOR_USER_PASSWORD);
+    console.log("WALLET_PAY_WEBHOOK_PUBLIC_KEY: ", process.env.WALLET_PAY_WEBHOOK_PUBLIC_KEY);
+    console.log("----- process.env end -----");
+    console.error("Bind email error:", error);
+    return res.status(500).json({ error: "Bind email failed" });
   }
 }
