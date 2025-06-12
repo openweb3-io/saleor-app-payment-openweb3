@@ -277,6 +277,44 @@ pnpm i
 pnpm dev
 ```
 
+<a id="env" style="text-decoration: underline;text-decoration: none;color: inherit;">Environment variables required at runtime<a/>
+
+```shell
+# Default field
+APP_DEBUG=info
+SECRET_KEY=aaaaaaaa
+
+# Dejay miniapp url
+DEJAY_MINIAPP_URL=https://t.me/wallet_bot/wallet
+
+# Telegram miniapp url
+TELEGRAM_MINIAPP_URL=https://t.me/socialwalletbot/SocialWallet
+
+# Dejay or telegram bot token
+TELEGRAM_BOT_TOKEN=7767176546:AAHkxeUHNEES2JIdGhMjPetJjqd_GErKl3c
+
+# Your sales api
+SALEOR_API_URL=https://store-.saleoropenweb3.cloud/graphql/
+
+# Saleor dashaboard account and password
+SALEOR_ADMIN_EMAIL=openweb3@gmail.com
+SALEOR_ADMIN_PASSWORD=openweb3
+
+# Storefont domain
+SALEOR_SESSION_DOMAIN=4b86554eee8059fe9598086f48e3feb6.serveo.net
+
+# Generate passwords randomly and do not leak them
+SALEOR_USER_PASSWORD=Nm0Cez1Tb3MUGPU2
+
+# Wallet-pay webhook key
+WALLET_PAY_WEBHOOK_PUBLIC_KEY=-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAw0b7kUY+zoEhqSWdeYfuI0BwORxquDrWhajGJo4o9UzAeP6qAzI0\n272dZWz4XA7zRkO6Z85gRbEym5v76zpm4uqnPWKzXqtmlxzPtQ9w3YmVLWi7ykWt\nJK3ovCTDEXzpv+/EGkgFJaf4fqTXvtrkRPoZIpkMiCDl9kU0BEeutTdCDIljGuJq\n5jI/t0W798HkYnpFrJBU5HxCQzI2YLKUI2jqZ0DihQ7FI9NSoI5xqZZJUuRHzWRw\n9MFQlFnm3CHbcpZLtTBWLDhpG1UVj03YpvzgndasdsadaddedeYrg7oUwVIFA\npLG3d/tSi4d4AjyePHYj/K3WUYWfFV3ChwIDAQAB\n-----END RSA PUBLIC KEY-----
+
+# Proxy email server, Email account password
+SMTP_SERVER=gmail
+SMTP_USER="openweb3@gmail.com"
+SMTP_PASS="openweb3"
+```
+
 > [!NOTE]
 > pnpm 8.0.0 or higher is required to run the app.
 
