@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("req.method=", req.method);
   if (req.method !== "POST") {
     setCorsHeaders(res);
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(200).json({ message: "Method not allowed", code: -1 });
   }
 
   try {
@@ -108,11 +108,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // If user doesn't exist, create new user
     if (!saleorUser) {
       return res.status(200).json({
-        code: 301,
-        message: "User not found, redirect to register page",
-        data: {
-          isRedirect: true,
-        },
+        code: 200,
+        message: "Anonymous user login",
       });
     }
 
@@ -127,13 +124,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (tokenError) {
       console.error("Create token error:", tokenError);
-      return res.status(500).json({ error: "Failed to create token" });
+      return res.status(200).json({ message: "Failed to create token", code: -1 });
     }
 
     const tokenCreate = tokenData?.tokenCreate;
     if (!tokenCreate || tokenCreate.errors?.length) {
       console.error("Create token error:", tokenCreate?.errors);
-      return res.status(500).json({ error: "Failed to create token" });
+      return res.status(200).json({ message: "Failed to create token", code: -1 });
     }
 
     // Create JWT token
@@ -174,7 +171,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       code: 0,
-      message: "success",
+      message: null,
       data: {
         detail: parsedData,
         localStorage: cookies,
@@ -194,6 +191,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log("WALLET_PAY_WEBHOOK_PUBLIC_KEY: ", process.env.WALLET_PAY_WEBHOOK_PUBLIC_KEY);
     console.log("----- process.env end -----");
     console.error("Authentication error:", error);
-    return res.status(500).json({ error: "Authentication failed" });
+    return res.status(200).json({ message: "Authentication failed", code: -1 });
   }
 }

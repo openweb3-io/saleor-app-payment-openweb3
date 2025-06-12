@@ -2,6 +2,7 @@ import { validate, parse } from "@telegram-apps/init-data-node";
 import { type NextApiRequest, type NextApiResponse } from "next";
 import { createAdminSaleorClient } from "@/modules/saleor";
 import { ACCOUNT_REGISTER_MUTATION, USER_QUERY } from "@/modules/saleor/graphql";
+import { emailVerificationStore } from "@/utils/emailVerification";
 
 // Define whitelist array
 const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
@@ -26,20 +27,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method !== "POST") {
     setCorsHeaders(res);
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(200).json({ message: "Method not allowed", code: -1 });
   }
 
   try {
     // Check if platform is in whitelist
     const platform = req.headers["platform"] as string;
     if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
-      return res.status(403).json({ error: "Invalid platform" });
+      return res.status(200).json({ message: "Invalid platform", code: -1 });
     }
 
-    const { initDataRaw, email } = req.body;
+    const { initDataRaw, email, code } = req.body as {
+      initDataRaw: string;
+      email: string;
+      code: string;
+    };
 
     if (!initDataRaw) {
-      return res.status(400).json({ error: "Missing initDataRaw parameter" });
+      return res.status(200).json({ message: "Missing initDataRaw parameter", code: -1 });
+    }
+
+    if (!email || !code) {
+      return res.status(200).json({ message: "Missing email or verification code", code: -1 });
     }
 
     // Verify Telegram parameters
@@ -49,6 +58,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Parse data
     const parsedData = parse(initDataRaw);
     const { user } = parsedData;
+
+    if (!user?.id) {
+      return res.status(200).json({ message: "Invalid user data", code: -1 });
+    }
+
+    const userId = user.id.toString();
+
+    // 验证验证码
+    const isValid = emailVerificationStore.verifyCode(email, code, userId);
+
+    if (!isValid) {
+      return res.status(200).json({
+        message: "Invalid or expired verification code, please request a new one",
+        code: -1,
+      });
+    }
+
+    // 验证成功后从内存中移除该邮箱
+    emailVerificationStore.removeEmail(email);
 
     // Create Saleor GraphQL client
     const adminSaleorClient = await createAdminSaleorClient();
@@ -103,13 +131,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (createError) {
       console.error("Create user error:", createError);
-      return res.status(500).json({ error: "Failed to create user" });
+      return res.status(200).json({ message: "Failed to create user", code: -1 });
     }
 
     const accountRegister = createData?.accountRegister;
     if (!accountRegister || accountRegister.errors?.length) {
       console.error("Create user error:", accountRegister?.errors);
-      return res.status(500).json({ error: "Failed to create user" });
+      return res.status(200).json({ message: "Failed to create user", code: -1 });
     }
 
     return res.status(200).json({
@@ -129,6 +157,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log("WALLET_PAY_WEBHOOK_PUBLIC_KEY: ", process.env.WALLET_PAY_WEBHOOK_PUBLIC_KEY);
     console.log("----- process.env end -----");
     console.error("Bind email error:", error);
-    return res.status(500).json({ error: "Bind email failed" });
+    return res.status(200).json({ message: "Bind email failed", code: -1 });
   }
 }
