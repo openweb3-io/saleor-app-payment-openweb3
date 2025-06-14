@@ -1,20 +1,9 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
 import nodemailer from "nodemailer";
-import { validate, parse } from "@telegram-apps/init-data-node";
 import { emailVerificationStore } from "@/utils/emailVerification";
 import { createAdminSaleorClient } from "@/modules/saleor";
 import { USER_QUERY } from "@/modules/saleor/graphql";
-
-// Define whitelist array
-const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
-
-// Set CORS headers
-const setCorsHeaders = (res: NextApiResponse) => {
-  res.setHeader("Access-Control-Allow-Origin", `https://${process.env.SALEOR_SESSION_DOMAIN}`);
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, platform");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-};
+import { handleOptions, handleParseInitData, setCorsHeaders } from "@/lib/openweb3";
 
 // 创建邮件传输器
 const transporter = nodemailer.createTransport({
@@ -30,51 +19,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   setCorsHeaders(res);
 
   // Handle OPTIONS request
-  if (req.method === "OPTIONS") {
-    setCorsHeaders(res);
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    setCorsHeaders(res);
-    return res.status(200).json({ message: "Method not allowed", code: -1 });
-  }
+  handleOptions(req, res);
 
   try {
-    // Check if platform is in whitelist
-    const platform = req.headers["platform"] as string;
-    if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
-      return res.status(200).json({ message: "Invalid platform", code: -1 });
-    }
+    const parsedData = await handleParseInitData(req, res)!;
+    const { user } = parsedData || {};
 
-    const { initDataRaw, email } = req.body as {
-      initDataRaw: string;
+    const { email } = req.body as {
       email: string;
     };
-
-    if (!initDataRaw) {
-      return res.status(200).json({ message: "Missing initDataRaw parameter", code: -1 });
-    }
 
     if (!email) {
       return res.status(200).json({ message: "Missing email parameter", code: -1 });
     }
 
-    // Verify Telegram parameters
-    validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
-
-    // Parse data
-    const parsedData = parse(initDataRaw);
-    const { user } = parsedData;
-
-    if (!user?.id) {
-      return res.status(200).json({ message: "Invalid user data", code: -1 });
-    }
-
-    const userId = user.id.toString();
-
     // 创建 Saleor GraphQL client
     const adminSaleorClient = await createAdminSaleorClient();
+
+    const userId = user?.id?.toString();
 
     // 检查邮箱是否已被绑定
     const { data: userData } = await adminSaleorClient
@@ -93,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 生成并存储验证码
-    const verificationCode = emailVerificationStore.addVerificationCode(email, userId);
+    const verificationCode = emailVerificationStore.addVerificationCode(email, userId!);
 
     // 发送邮件
     await transporter.sendMail({

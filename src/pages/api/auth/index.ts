@@ -1,4 +1,3 @@
-import { validate, parse } from "@telegram-apps/init-data-node";
 import { type NextApiRequest, type NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
 import { createAdminSaleorClient } from "@/modules/saleor";
@@ -7,62 +6,68 @@ import {
   CUSTOMER_QUERY,
   TOKEN_VERIFY_MUTATION,
 } from "@/modules/saleor/graphql";
+import { handleOptions, handleParseInitData, handlePlatform, setCorsHeaders } from "@/lib/openweb3";
 
-// Define whitelist array
-const WHITELIST_PLATFORMS = ["app.saleor.openweb3"];
-
+const OPENWEB3_TOKEN = "openweb3-walletpay";
 const ACCESS_TOKEN = `${process.env.SALEOR_API_URL}+saleor_auth_access_token`;
 const REFRESH_TOKEN = `${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token`;
+const AUTH_STATE = `${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state`;
 
-// Set CORS headers
-const setCorsHeaders = (res: NextApiResponse) => {
-  res.setHeader("Access-Control-Allow-Origin", `https://${process.env.SALEOR_SESSION_DOMAIN}`);
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, platform");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-};
+const formatRemoveCookie = (name: string) =>
+  `${name}=; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Max-Age=0;`;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Set CORS headers
   setCorsHeaders(res);
 
   // Handle OPTIONS request
-  if (req.method === "OPTIONS") {
-    setCorsHeaders(res);
-    return res.status(200).end();
-  }
-  console.log("req.method=", req.method);
-  if (req.method !== "POST") {
-    setCorsHeaders(res);
-    return res.status(200).json({ message: "Method not allowed", code: -1 });
-  }
+  handleOptions(req, res);
 
   try {
-    // Check if platform is in whitelist
-    const platform = req.headers["platform"] as string;
-    if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
-      return res.status(403).json({ error: "Invalid platform" });
-    }
+    void handlePlatform(req, res);
 
-    const initDataRaw = req.body.initDataRaw;
+    const parsedData = await handleParseInitData(req, res)!;
 
-    if (!initDataRaw) {
-      return res.status(400).json({ error: "Missing initDataRaw parameter" });
+    // Create Saleor GraphQL client
+    const adminSaleorClient = await createAdminSaleorClient();
+
+    // Checkout user
+    const { user, startParam } = parsedData || {};
+
+    const userId = user?.id?.toString();
+
+    const { data: customerData } = await adminSaleorClient
+      .query(CUSTOMER_QUERY, {
+        first: 20,
+        filter: {
+          metadata: [
+            {
+              key: "userId",
+              value: userId,
+            },
+          ],
+        },
+        PERMISSION_MANAGE_ORDERS: true,
+      })
+      .toPromise();
+    const saleorUser = customerData.customers.edges[0]?.node;
+    // If user doesn't exist, create new user
+    if (!saleorUser) {
+      const cookies: string[] = [OPENWEB3_TOKEN, AUTH_STATE, ACCESS_TOKEN, REFRESH_TOKEN];
+      res.setHeader(
+        "Set-Cookie",
+        cookies.map((name) => formatRemoveCookie(name)),
+      );
+      return res.status(200).json({
+        code: 200,
+        message: "Anonymous user login",
+      });
     }
-    // Verify Telegram parameters
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
-    // Parse data
-    const parsedData = parse(initDataRaw);
 
     // 检查是否存在 refresh token
     const refreshToken = req.cookies[REFRESH_TOKEN];
     const accessToken = req.cookies[ACCESS_TOKEN];
-
     if (refreshToken && accessToken) {
-      // 创建 Saleor GraphQL client
-      const adminSaleorClient = await createAdminSaleorClient();
-
       // 验证 refresh token
       const { data: verifyData, error: verifyError } = await adminSaleorClient
         .mutation(TOKEN_VERIFY_MUTATION, {
@@ -84,35 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Create Saleor GraphQL client
-    const adminSaleorClient = await createAdminSaleorClient();
-
-    // Checkout user
-    const { user, startParam } = parsedData;
-    const { data: customerData } = await adminSaleorClient
-      .query(CUSTOMER_QUERY, {
-        first: 20,
-        filter: {
-          metadata: [
-            {
-              key: "userId",
-              value: `${user?.id}`,
-            },
-          ],
-        },
-        PERMISSION_MANAGE_ORDERS: true,
-      })
-      .toPromise();
-    const saleorUser = customerData.customers.edges[0]?.node;
-
-    // If user doesn't exist, create new user
-    if (!saleorUser) {
-      return res.status(200).json({
-        code: 200,
-        message: "Anonymous user login",
-      });
-    }
-
+    // If the refresh token does not exist, a new token is created
     const password = `${process.env.SALEOR_USER_PASSWORD}${user?.id}`;
     // Get user token
     const { data: tokenData, error: tokenError } = await adminSaleorClient
@@ -122,21 +99,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .toPromise();
 
-    if (tokenError) {
-      console.error("Create token error:", tokenError);
-      return res.status(200).json({ message: "Failed to create token", code: -1 });
-    }
-
     const tokenCreate = tokenData?.tokenCreate;
-    if (!tokenCreate || tokenCreate.errors?.length) {
-      console.error("Create token error:", tokenCreate?.errors);
+    if (tokenError || !tokenCreate || tokenCreate.errors?.length) {
+      console.error("Create token error:", tokenError);
       return res.status(200).json({ message: "Failed to create token", code: -1 });
     }
 
     // Create JWT token
     const token = jwt.sign(
       {
-        id: user?.id.toString(),
+        id: userId,
         username: user?.username,
         first_name: user?.firstName,
         last_name: user?.lastName,
@@ -151,15 +123,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Set cookie
     const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
-
     const formatCookie = (name: string, value: string) =>
       `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Domain=${process.env.SALEOR_SESSION_DOMAIN}; Secure; Expires=${expires}`;
 
     type CookieEntry = [string, string];
 
     const cookies: CookieEntry[] = [
-      ["openweb3-walletpay", token],
-      [`${process.env.SALEOR_API_URL}+saleor_auth_module_auth_state`, "signedIn"],
+      [OPENWEB3_TOKEN, token],
+      [AUTH_STATE, "signedIn"],
       [ACCESS_TOKEN, tokenCreate.token],
       [REFRESH_TOKEN, tokenCreate.refreshToken],
     ];
@@ -178,18 +149,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (error) {
-    console.log("----- process.env start------");
-    console.log("debug print")
-    console.log("DEJAY_MINIAPP_URL: ", process.env.DEJAY_MINIAPP_URL);
-    console.log("TELEGRAM_MINIAPP_URL: ", process.env.TELEGRAM_MINIAPP_URL);
-    console.log("TELEGRAM_BOT_TOKEN: ", process.env.TELEGRAM_BOT_TOKEN);
-    console.log("SALEOR_API_URL: ", process.env.SALEOR_API_URL);
-    console.log("SALEOR_ADMIN_EMAIL: ", process.env.SALEOR_ADMIN_EMAIL);
-    console.log("SALEOR_ADMIN_PASSWORD: ", process.env.SALEOR_ADMIN_PASSWORD);
-    console.log("SALEOR_SESSION_DOMAIN: ", process.env.SALEOR_SESSION_DOMAIN);
-    console.log("SALEOR_USER_PASSWORD: ", process.env.SALEOR_USER_PASSWORD);
-    console.log("WALLET_PAY_WEBHOOK_PUBLIC_KEY: ", process.env.WALLET_PAY_WEBHOOK_PUBLIC_KEY);
-    console.log("----- process.env end -----");
     console.error("Authentication error:", error);
     return res.status(200).json({ message: "Authentication failed", code: -1 });
   }
