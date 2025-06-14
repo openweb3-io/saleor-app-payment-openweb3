@@ -91,12 +91,4 @@ class EmailVerificationStore {
   }
 }
 
-// 创建单例实例
-let instance: EmailVerificationStore | null = null;
-
-export const emailVerificationStore = (() => {
-  if (!instance) {
-    instance = new EmailVerificationStore();
-  }
-  return instance;
-})();
+export const emailVerificationStore = new EmailVerificationStore();

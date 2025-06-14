@@ -1,33 +1,50 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
+import { validate, parse } from "@telegram-apps/init-data-node";
 import { createAdminSaleorClient } from "@/modules/saleor";
 import { ACCOUNT_REGISTER_MUTATION, USER_QUERY } from "@/modules/saleor/graphql";
 import { emailVerificationStore } from "@/utils/emailVerification";
-import { handleOptions, handleParseInitData, handlePlatform, setCorsHeaders } from "@/lib/openweb3";
+import { setCorsHeaders, WHITELIST_PLATFORMS } from "@/lib/openweb3";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Set CORS headers
   setCorsHeaders(res);
 
   // Handle OPTIONS request
-  handleOptions(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(200).json({ message: "Method not allowed", code: -1 });
+  }
+
+  // Check if platform is in whitelist
+  const platform = req.headers["platform"] as string;
+  if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
+    return res.status(200).json({ message: "Invalid platform", code: -1 });
+  }
 
   try {
-    const platform = handlePlatform(req, res);
-
-    const parsedData = await handleParseInitData(req, res)!;
-    const { user } = parsedData || {};
-
-    const { email, code } = req.body as {
+    const { initDataRaw, email, code } = req.body as {
+      initDataRaw: string;
       email: string;
       code: string;
     };
 
-    const userId = user?.id?.toString();
-
+    if (!initDataRaw) {
+      return res.status(200).json({ message: "Missing initDataRaw parameter", code: -1 });
+    }
     if (!email) {
       return res.status(200).json({ message: "Missing email parameter", code: -1 });
     }
+    // Verify Telegram parameters
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
 
+    // Parse data
+    const { user } = parse(initDataRaw);
+    const userId = user?.id?.toString();
+    console.log("email=", emailVerificationStore);
     // 验证验证码
     const isValid = emailVerificationStore.verifyCode(email, code, userId!);
     if (!isValid) {
@@ -85,9 +102,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log("createData=", createData);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const accountRegister = createData?.accountRegister;
-    if (createError || !accountRegister || accountRegister.errors?.length) {
+    if (createError) {
       console.error("Create user error:", createError);
+      return res.status(200).json({ message: "Failed to create user", code: -1 });
+    }
+
+    const accountRegister = createData?.accountRegister;
+    if (!accountRegister || accountRegister.errors?.length) {
+      console.error("Create user error:", accountRegister?.errors);
       return res.status(200).json({ message: "Failed to create user", code: -1 });
     }
 

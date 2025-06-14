@@ -1,9 +1,10 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
 import nodemailer from "nodemailer";
+import { validate, parse } from "@telegram-apps/init-data-node";
 import { emailVerificationStore } from "@/utils/emailVerification";
 import { createAdminSaleorClient } from "@/modules/saleor";
 import { USER_QUERY } from "@/modules/saleor/graphql";
-import { handleOptions, handleParseInitData, setCorsHeaders } from "@/lib/openweb3";
+import { setCorsHeaders, WHITELIST_PLATFORMS } from "@/lib/openweb3";
 
 // 创建邮件传输器
 const transporter = nodemailer.createTransport({
@@ -19,25 +20,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   setCorsHeaders(res);
 
   // Handle OPTIONS request
-  handleOptions(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(200).json({ message: "Method not allowed", code: -1 });
+  }
+
+  // Check if platform is in whitelist
+  const platform = req.headers["platform"] as string;
+  if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
+    return res.status(200).json({ message: "Invalid platform", code: -1 });
+  }
 
   try {
-    const parsedData = await handleParseInitData(req, res)!;
-    const { user } = parsedData || {};
-
-    const { email } = req.body as {
+    const { initDataRaw, email } = req.body as {
+      initDataRaw: string;
       email: string;
     };
+
+    if (!initDataRaw) {
+      return res.status(200).json({ message: "Missing initDataRaw parameter", code: -1 });
+    }
 
     if (!email) {
       return res.status(200).json({ message: "Missing email parameter", code: -1 });
     }
 
+    // Verify Telegram parameters
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
     // 创建 Saleor GraphQL client
     const adminSaleorClient = await createAdminSaleorClient();
 
+    // Parse data
+    const { user } = parse(initDataRaw);
     const userId = user?.id?.toString();
-
     // 检查邮箱是否已被绑定
     const { data: userData } = await adminSaleorClient
       .query(USER_QUERY, {

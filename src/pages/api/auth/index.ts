@@ -1,13 +1,13 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
+import { validate, parse } from "@telegram-apps/init-data-node";
 import { createAdminSaleorClient } from "@/modules/saleor";
 import {
   TOKEN_CREATE_MUTATION,
   CUSTOMER_QUERY,
   TOKEN_VERIFY_MUTATION,
 } from "@/modules/saleor/graphql";
-import { handleOptions, handleParseInitData, handlePlatform, setCorsHeaders } from "@/lib/openweb3";
-
+import { setCorsHeaders, WHITELIST_PLATFORMS } from "@/lib/openweb3";
 const OPENWEB3_TOKEN = "openweb3-walletpay";
 const ACCESS_TOKEN = `${process.env.SALEOR_API_URL}+saleor_auth_access_token`;
 const REFRESH_TOKEN = `${process.env.SALEOR_API_URL}+saleor_auth_module_refresh_token`;
@@ -21,21 +21,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   setCorsHeaders(res);
 
   // Handle OPTIONS request
-  handleOptions(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(200).json({ message: "Method not allowed", code: -1 });
+  }
+
+  // Check if platform is in whitelist
+  const platform = req.headers["platform"] as string;
+  if (!platform || !WHITELIST_PLATFORMS.includes(platform)) {
+    return res.status(200).json({ message: "Invalid platform", code: -1 });
+  }
 
   try {
-    void handlePlatform(req, res);
-
-    const parsedData = await handleParseInitData(req, res)!;
+    const initDataRaw = req.body.initDataRaw;
+    if (!initDataRaw) {
+      return res.status(200).json({ message: "Missing initDataRaw parameter", code: -1 });
+    }
+    // Verify Telegram parameters
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    validate(initDataRaw, process.env.TELEGRAM_BOT_TOKEN || "");
 
     // Create Saleor GraphQL client
     const adminSaleorClient = await createAdminSaleorClient();
 
-    // Checkout user
-    const { user, startParam } = parsedData || {};
-
+    // Parse data
+    const { user, startParam } = parse(initDataRaw);
     const userId = user?.id?.toString();
-
     const { data: customerData } = await adminSaleorClient
       .query(CUSTOMER_QUERY, {
         first: 20,
@@ -50,7 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         PERMISSION_MANAGE_ORDERS: true,
       })
       .toPromise();
-    const saleorUser = customerData.customers.edges[0]?.node;
+    const saleorUser = customerData.customers?.edges?.[0]?.node;
+
     // If user doesn't exist, create new user
     if (!saleorUser) {
       const cookies: string[] = [OPENWEB3_TOKEN, AUTH_STATE, ACCESS_TOKEN, REFRESH_TOKEN];
@@ -59,8 +74,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         cookies.map((name) => formatRemoveCookie(name)),
       );
       return res.status(200).json({
-        code: 200,
+        code: 0,
         message: "Anonymous user login",
+        data: {
+          localStorage: cookies,
+          clear: true,
+        },
       });
     }
 
@@ -90,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // If the refresh token does not exist, a new token is created
-    const password = `${process.env.SALEOR_USER_PASSWORD}${user?.id}`;
+    const password = `${process.env.SALEOR_USER_PASSWORD}${userId}`;
     // Get user token
     const { data: tokenData, error: tokenError } = await adminSaleorClient
       .mutation(TOKEN_CREATE_MUTATION, {
@@ -99,9 +118,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .toPromise();
 
-    const tokenCreate = tokenData?.tokenCreate;
-    if (tokenError || !tokenCreate || tokenCreate.errors?.length) {
+    if (tokenError) {
       console.error("Create token error:", tokenError);
+      return res.status(200).json({ message: "Failed to create token", code: -1 });
+    }
+
+    const tokenCreate = tokenData?.tokenCreate;
+    if (!tokenCreate || tokenCreate.errors?.length) {
+      console.error("Create token error:", tokenCreate?.errors);
       return res.status(200).json({ message: "Failed to create token", code: -1 });
     }
 
@@ -144,7 +168,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       code: 0,
       message: null,
       data: {
-        detail: parsedData,
         localStorage: cookies,
       },
     });
