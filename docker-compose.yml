@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  openweb3:
+    container_name: openweb3
+    image: saleor/saleor-app-payment-openweb3:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    restart: always
+    ports:
+      - 3001:3001
