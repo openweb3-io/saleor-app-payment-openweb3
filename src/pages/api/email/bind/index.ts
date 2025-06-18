@@ -75,41 +75,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const registerParams = {
+      email: email,
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      password: password,
+      metadata: [
+        {
+          key: "userId",
+          value: userId,
+        },
+        {
+          key: "userName",
+          value: user?.username || "",
+        },
+        {
+          key: "platform",
+          value: platform,
+        },
+      ],
+    };
+
+    console.log("registerParams=", registerParams);
+
     const { data: createData, error: createError } = await adminSaleorClient
       .mutation(ACCOUNT_REGISTER_MUTATION, {
-        input: {
-          email: email,
-          firstName: user?.firstName || "",
-          lastName: user?.lastName || "",
-          password: password,
-          metadata: [
-            {
-              key: "userId",
-              value: userId,
-            },
-            {
-              key: "userName",
-              value: user?.username || "",
-            },
-            {
-              key: "platform",
-              value: platform,
-            },
-          ],
-        },
+        input: registerParams,
       })
       .toPromise();
 
     console.log("createData=", createData);
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     if (createError) {
-      console.error("Create user error:", createError);
+      console.error("Create user error:", JSON.stringify(createError));
       return res.status(200).json({ message: "Failed to create user", code: -1 });
     }
 
     const accountRegister = createData?.accountRegister;
     if (!accountRegister || accountRegister.errors?.length) {
-      console.error("Create user error:", accountRegister?.errors);
+      console.error("Create user error:", JSON.stringify(accountRegister));
       return res.status(200).json({ message: "Failed to create user", code: -1 });
     }
 
