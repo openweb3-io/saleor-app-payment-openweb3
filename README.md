@@ -300,9 +300,6 @@ SALEOR_API_URL=https://store-.saleoropenweb3.cloud/graphql/
 SALEOR_ADMIN_EMAIL=openweb3@gmail.com
 SALEOR_ADMIN_PASSWORD=openweb3
 
-# Storefont domain
-SALEOR_SESSION_DOMAIN=4b86554eee8059fe9598086f48e3feb6.serveo.net
-
 # Generate passwords randomly and do not leak them
 SALEOR_USER_PASSWORD=Nm0Cez1Tb3MUGPU2
 
