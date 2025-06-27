@@ -101,8 +101,8 @@ export const TRANSACTION_PROCESS_MUTATION = `
 
 // 完成结账 mutation
 export const CHECKOUT_COMPLETE_MUTATION = `
-  mutation checkoutComplete($id: ID!) {
-    checkoutComplete(id: $id) {
+  mutation checkoutComplete($id: ID!, $metadata: [MetadataInput!]) {
+    checkoutComplete(id: $id, metadata: $metadata) {
       order {
         id
       }
