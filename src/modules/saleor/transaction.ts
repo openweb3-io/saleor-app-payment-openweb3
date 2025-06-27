@@ -50,6 +50,16 @@ export async function processTransaction(
       const checkoutCompleteResult = await adminClient
         .mutation(CHECKOUT_COMPLETE_MUTATION, {
           id: checkoutId,
+          metadata: [
+            {
+              key: "transactionId",
+              value: transactionId,
+            },
+            {
+              key: "checkoutId",
+              value: checkoutId,
+            },
+          ],
         })
         .toPromise();
 
