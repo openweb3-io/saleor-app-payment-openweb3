@@ -83,7 +83,7 @@ export const TransactionInitializeSessionWebhookHandler = async (
       process.env[
         openweb3PaymentIntent.metadata?.platform === PLATFORM.TELEGRAM
           ? "TELEGRAM_MINIAPP_URL"
-          : "DEJAY_MINIAPP_URL"
+          : "DEJOY_MINIAPP_URL"
       ];
 
     const redirectUrl = `${platformURL}?startapp=Pay_${openweb3PaymentIntent.id}`;

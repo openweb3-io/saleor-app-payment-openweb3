@@ -117,7 +117,7 @@ export const openweb3PaymentIntentToTransactionResult = (
 
 export enum PLATFORM {
   TELEGRAM = "TELEGRAM",
-  DEJAY = "DEJAY",
+  DEJOY = "DEJOY",
 }
 
 export interface PaymentIntentCommonParams {

@@ -284,13 +284,13 @@ pnpm dev
 APP_DEBUG=info
 SECRET_KEY=aaaaaaaa
 
-# Dejay miniapp url
-DEJAY_MINIAPP_URL=https://t.me/wallet_bot/wallet
+# Dejoy miniapp url
+DEJOY_MINIAPP_URL=https://t.me/wallet_bot/wallet
 
 # Telegram miniapp url
 TELEGRAM_MINIAPP_URL=https://t.me/socialwalletbot/SocialWallet
 
-# Dejay or telegram bot token
+# Dejoy or telegram bot token
 TELEGRAM_BOT_TOKEN=7767176546:AAHkxeUHNEES2JIdGhMjPetJjqd_GErKl3c
 
 # Your sales api
