@@ -3,11 +3,12 @@ import { FileAPL, UpstashAPL, SaleorCloudAPL } from "@saleor/app-sdk/APL";
 import { invariant } from "./lib/invariant";
 import { env } from "./lib/env.mjs";
 import { createLogger } from "./lib/logger";
+import { RedisAPL } from "./lib/redis-apl";
 // import { isTest } from "./lib/isEnv";
 
 /**
  * By default auth data are stored in the `.auth-data.json` (FileAPL).
- * For multi-tenant applications and deployments please use UpstashAPL.
+ * For multi-tenant applications and deployments please use UpstashAPL or RedisAPL.
  *
  * To read more about storing auth data, read the
  * [APL documentation](https://github.com/saleor/saleor-app-sdk/blob/main/docs/apl.md)
@@ -32,6 +33,18 @@ const getApl = async () => {
       return new SaleorCloudAPL({
         resourceUrl: env.REST_APL_ENDPOINT,
         token: env.REST_APL_TOKEN,
+      });
+    }
+    case "redis": {
+      logger.info("Using Redis APL");
+      invariant(env.REDIS_URL, "Missing REDIS_URL env variable!");
+      return new RedisAPL({
+        redisUrl: env.REDIS_URL,
+        redisPassword: env.REDIS_PASSWORD,
+        keyPrefix: env.REDIS_KEY_PREFIX,
+        ttl: env.REDIS_TTL,
+        tls: env.REDIS_TLS,
+        tlsRejectUnauthorized: env.REDIS_TLS_REJECT_UNAUTHORIZED,
       });
     }
     default:

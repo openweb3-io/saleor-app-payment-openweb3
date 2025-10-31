@@ -12,7 +12,7 @@ export const env = createEnv({
     ENV: z.enum(["development", "test", "staging", "production"]).default("development"),
     SECRET_KEY: z.string().min(8, { message: "Cannot be too short" }),
     SENTRY_DSN: z.string().min(1).optional(),
-    APL: z.enum(["saleor-cloud", "upstash", "file"]).optional().default("file"),
+    APL: z.enum(["saleor-cloud", "upstash", "redis", "file"]).optional().default("file"),
     CI: z.coerce.boolean().optional().default(false),
     APP_DEBUG: z
       .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
@@ -24,6 +24,12 @@ export const env = createEnv({
     UPSTASH_TOKEN: z.string().optional(),
     REST_APL_ENDPOINT: z.string().optional(),
     REST_APL_TOKEN: z.string().optional(),
+    REDIS_URL: z.string().optional(),
+    REDIS_PASSWORD: z.string().optional(),
+    REDIS_KEY_PREFIX: z.string().optional(),
+    REDIS_TTL: z.coerce.number().optional(),
+    REDIS_TLS: z.coerce.boolean().optional(),
+    REDIS_TLS_REJECT_UNAUTHORIZED: z.coerce.boolean().optional(),
     ALLOWED_DOMAIN_PATTERN: z.string().optional(),
   },
 
@@ -57,6 +63,12 @@ export const env = createEnv({
     UPSTASH_TOKEN: process.env.UPSTASH_TOKEN,
     REST_APL_ENDPOINT: process.env.REST_APL_ENDPOINT,
     REST_APL_TOKEN: process.env.REST_APL_TOKEN,
+    REDIS_URL: process.env.REDIS_URL,
+    REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+    REDIS_KEY_PREFIX: process.env.REDIS_KEY_PREFIX,
+    REDIS_TTL: process.env.REDIS_TTL,
+    REDIS_TLS: process.env.REDIS_TLS,
+    REDIS_TLS_REJECT_UNAUTHORIZED: process.env.REDIS_TLS_REJECT_UNAUTHORIZED,
     ALLOWED_DOMAIN_PATTERN: process.env.ALLOWED_DOMAIN_PATTERN,
   },
 });
